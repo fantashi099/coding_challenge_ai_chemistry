@@ -1,0 +1,32 @@
+{
+  "question": "What is the difference between ionic and covalent bonding?",
+  "model": "qwen/qwen3.7-flash",
+  "token_usage": {
+    "prompt_tokens": 426,
+    "completion_tokens": 5469,
+    "total_tokens": 5895,
+    "cost": 0.00072375,
+    "is_byok": false,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 0,
+      "audio_tokens": 0,
+      "video_tokens": 0
+    },
+    "cost_details": {
+      "upstream_inference_cost": 0.00072375,
+      "upstream_inference_prompt_cost": 1.278e-05,
+      "upstream_inference_completions_cost": 0.00071097
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 4758,
+      "image_tokens": 0,
+      "audio_tokens": 0
+    }
+  },
+  "reported_llm_cost_usd": 0.00072375,
+  "fallback_used": false,
+  "duration_seconds": 113.848,
+  "elapsed_seconds": 94.234,
+  "fallback_source": "none"
+}

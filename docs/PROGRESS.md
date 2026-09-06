@@ -54,6 +54,8 @@
 
 ## 2026-09-07
 
+- Decision: publish only the three accepted jobs' final MP4 files, not WAVs, intermediate clips, Manim caches, or machine-local concat manifests.
+- Validation: all three published samples contain H.264 video and AAC audio, play under `ffprobe`, and run 61.892–114.025 seconds; the root README links each question directly to its MP4.
 - Decision: prefer ElevenLabs River with `eleven_turbo_v2_5` when `ELEVENLABS_API_KEY` is configured; otherwise retain local Piper without changing entry points or the generation pipeline.
 - Implementation: added direct HTTPX speech generation and FFmpeg MP3-to-WAV conversion using the existing dependencies; voice and model remain environment-configurable.
 - Validation: all 23 tests pass, including provider selection, ElevenLabs request parameters, and audio conversion invocation. Live ElevenLabs generation was not attempted with the exposed credential.
