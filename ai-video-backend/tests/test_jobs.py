@@ -1,4 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
+import sqlite3
 
 import pytest
 
@@ -46,3 +47,39 @@ def test_completion_and_recovery_respect_two_attempt_limit(tmp_path):
     artifact = tmp_path / "published.mp4"
     complete_store.complete(completed.id, artifact)
     assert complete_store.get(completed.id).artifact_path == str(artifact)
+
+
+def test_normalized_question_is_deduplicated_concurrently(tmp_path):
+    store = JobStore(tmp_path / "jobs.sqlite3")
+
+    def submit(question):
+        return JobStore(store.path).get_or_create(question)
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(submit, ["  HOW   does pH work? ", "how does ph work?"]))
+    assert results[0][0].id == results[1][0].id
+    assert sorted(created for _, created in results) == [False, True]
+    assert len(store.list()) == 1
+
+
+def test_legacy_schema_migration_retains_duplicate_rows(tmp_path):
+    path = tmp_path / "legacy.sqlite3"
+    with sqlite3.connect(path) as db:
+        db.execute(
+            """CREATE TABLE jobs (
+                id TEXT PRIMARY KEY, question TEXT NOT NULL, status TEXT NOT NULL,
+                attempts INTEGER NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+                artifact_path TEXT, error TEXT
+            )"""
+        )
+        rows = [
+            ("oldest", "Same Question", "completed", 1, "2026-01-01", "2026-01-01", "/first.mp4", None),
+            ("newer", " same  question ", "completed", 1, "2026-01-02", "2026-01-02", "/second.mp4", None),
+        ]
+        db.executemany("INSERT INTO jobs VALUES (?, ?, ?, ?, ?, ?, ?, ?)", rows)
+
+    store = JobStore(path)
+    canonical, created = store.get_or_create("SAME QUESTION")
+    assert canonical.id == "oldest"
+    assert created is False
+    assert len(store.list()) == 2

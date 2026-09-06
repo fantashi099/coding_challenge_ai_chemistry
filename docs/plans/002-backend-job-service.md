@@ -1,6 +1,6 @@
 # 002 — Backend job service
 
-Status: baseline implemented; deduplication and learned-fallback revision planned on 2026-09-06.
+Status: deduplication, Swagger, and learned-fallback revision implemented and verified on 2026-09-06.
 
 ## Goal
 
@@ -131,7 +131,7 @@ Continue using the existing `.env` configuration for OpenRouter and Piper. Add o
 7. Run the complete existing CLI/render suite to ensure the service wrapper does not change generation behavior.
 8. Run `git diff --check` and document results in `docs/PROGRESS.md` before the phase commit.
 
-Baseline result: all 13 repository tests pass, including the existing render smoke test; `git diff --check` passes. The revision above is not yet implemented.
+Result: all 20 repository tests pass, including concurrent deduplication, schema migration, Swagger contracts, learned fallback behavior, worker promotion, and the existing render smoke test; `git diff --check` passes.
 
 ## Run contract
 

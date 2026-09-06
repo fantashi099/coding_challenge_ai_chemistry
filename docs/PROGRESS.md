@@ -32,5 +32,9 @@
 - Requested revision: explicitly document Swagger UI, prevent duplicate jobs for normalized-identical questions, reuse completed artifacts, and promote successfully rendered LLM plans into learned fallbacks for new topics.
 - Decision: deduplicate with a database-enforced normalized `question_key`; avoid semantic/fuzzy matching in the MVP.
 - Decision: promote learned fallbacks only after end-to-end render success and revalidate them on read. Resolution order will be live LLM, learned fallback, curated fallback, then failure.
-- Current state: revision is documented in plan 002 but not implemented.
-- Next action: implement schema migration and `get_or_create`, then Swagger models/tests, then learned fallback storage and worker promotion.
+- Implementation: added NFKC/case-folded question keys, concurrency-safe `get_or_create`, legacy schema migration, and completed-artifact reuse.
+- Implementation: added explicit Swagger response models/media responses and documented `/docs`, `/openapi.json`, and `/redoc`.
+- Implementation: added a validated SQLite learned-fallback repository, live → learned → curated resolution, usage tracking, and post-render worker promotion.
+- Validation: all 20 tests pass; `git diff --check` passes.
+- Current blocker: none.
+- Next action: run API and worker with the configured `.env`, submit a new topic, then resubmit a normalized variant to verify real artifact reuse.

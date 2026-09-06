@@ -15,6 +15,11 @@ def test_video_api_lifecycle_and_artifact(tmp_path):
             assert created.status_code == 202
             job_id = created.json()["id"]
             assert created.json()["status"] == "queued"
+            assert created.json()["reused"] is False
+            duplicate = await client.post("/videos", json={"question": "  HOW   DOES PH WORK? "})
+            assert duplicate.status_code == 202
+            assert duplicate.json()["id"] == job_id
+            assert duplicate.json()["reused"] is True
             assert (await client.get(f"/videos/{job_id}/artifact")).status_code == 409
             assert (await client.get("/videos/missing")).status_code == 404
             assert (await client.get("/videos/missing/artifact")).status_code == 404
@@ -27,9 +32,25 @@ def test_video_api_lifecycle_and_artifact(tmp_path):
             detail = (await client.get(f"/videos/{job_id}")).json()
             assert detail["artifact_url"] == f"/videos/{job_id}/artifact"
             assert (await client.get(detail["artifact_url"])).content == b"video"
+            completed_duplicate = await client.post("/videos", json={"question": "how does ph work?"})
+            assert completed_duplicate.status_code == 200
+            assert completed_duplicate.json()["id"] == job_id
 
             artifact.unlink()
             assert (await client.get(detail["artifact_url"])).status_code == 404
+
+    asyncio.run(exercise())
+
+
+def test_swagger_and_openapi_document_public_contract(tmp_path):
+    async def exercise():
+        transport = httpx.ASGITransport(app=create_app(store=JobStore(tmp_path / "jobs.sqlite3")))
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            assert (await client.get("/docs")).status_code == 200
+            schema = (await client.get("/openapi.json")).json()
+            assert set(schema["paths"]) >= {"/videos", "/videos/{job_id}", "/videos/{job_id}/artifact"}
+            assert "CreateVideoResponse" in schema["components"]["schemas"]
+            assert set(schema["paths"]["/videos"]["post"]["responses"]) >= {"200", "202", "422"}
 
     asyncio.run(exercise())
 

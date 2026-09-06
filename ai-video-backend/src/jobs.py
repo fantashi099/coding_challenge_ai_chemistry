@@ -1,4 +1,5 @@
 import sqlite3
+import unicodedata
 import uuid
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
@@ -7,6 +8,10 @@ from pathlib import Path
 
 def _now() -> str:
     return datetime.now(UTC).isoformat()
+
+
+def question_key(question: str) -> str:
+    return " ".join(unicodedata.normalize("NFKC", question).casefold().split())
 
 
 @dataclass(frozen=True)
@@ -34,6 +39,7 @@ class JobStore:
                 """CREATE TABLE IF NOT EXISTS jobs (
                     id TEXT PRIMARY KEY,
                     question TEXT NOT NULL,
+                    question_key TEXT NOT NULL,
                     status TEXT NOT NULL CHECK(status IN ('queued','running','completed','failed')),
                     attempts INTEGER NOT NULL DEFAULT 0,
                     created_at TEXT NOT NULL,
@@ -42,7 +48,10 @@ class JobStore:
                     error TEXT
                 )"""
             )
+            self._migrate_question_keys(db)
             db.execute("CREATE INDEX IF NOT EXISTS jobs_queue ON jobs(status, created_at)")
+            db.execute("CREATE UNIQUE INDEX IF NOT EXISTS jobs_question_key ON jobs(question_key)")
+            db.execute("PRAGMA user_version=2")
 
     def _connect(self) -> sqlite3.Connection:
         db = sqlite3.connect(self.path, timeout=10, isolation_level=None)
@@ -53,23 +62,56 @@ class JobStore:
     def _job(row: sqlite3.Row | None) -> Job | None:
         return Job(**dict(row)) if row else None
 
+    @staticmethod
+    def _migrate_question_keys(db: sqlite3.Connection) -> None:
+        columns = {row["name"] for row in db.execute("PRAGMA table_info(jobs)")}
+        if "question_key" in columns:
+            return
+        db.execute("ALTER TABLE jobs ADD COLUMN question_key TEXT")
+        seen: set[str] = set()
+        for row in db.execute("SELECT id, question FROM jobs ORDER BY created_at, id"):
+            key = question_key(row["question"])
+            stored_key = key if key not in seen else f"{key}::legacy::{row['id']}"
+            db.execute("UPDATE jobs SET question_key = ? WHERE id = ?", (stored_key, row["id"]))
+            seen.add(key)
+
     def create(self, question: str) -> Job:
+        return self.get_or_create(question)[0]
+
+    def get_or_create(self, question: str) -> tuple[Job, bool]:
+        key = question_key(question)
         now = _now()
         job = Job(str(uuid.uuid4()), question, "queued", 0, now, now, None, None)
         with self._connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            existing = db.execute(
+                "SELECT id, question, status, attempts, created_at, updated_at, artifact_path, error FROM jobs WHERE question_key = ?",
+                (key,),
+            ).fetchone()
+            if existing:
+                db.commit()
+                return Job(**dict(existing)), False
             db.execute(
-                "INSERT INTO jobs VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                tuple(job.as_dict().values()),
+                """INSERT INTO jobs
+                   (id, question, question_key, status, attempts, created_at, updated_at, artifact_path, error)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (job.id, job.question, key, job.status, job.attempts, job.created_at, job.updated_at, None, None),
             )
-        return job
+            db.commit()
+        return job, True
 
     def get(self, job_id: str) -> Job | None:
         with self._connect() as db:
-            return self._job(db.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone())
+            return self._job(db.execute(
+                "SELECT id, question, status, attempts, created_at, updated_at, artifact_path, error FROM jobs WHERE id = ?",
+                (job_id,),
+            ).fetchone())
 
     def list(self) -> list[Job]:
         with self._connect() as db:
-            rows = db.execute("SELECT * FROM jobs ORDER BY created_at DESC").fetchall()
+            rows = db.execute(
+                "SELECT id, question, status, attempts, created_at, updated_at, artifact_path, error FROM jobs ORDER BY created_at DESC"
+            ).fetchall()
         return [Job(**dict(row)) for row in rows]
 
     def claim(self) -> Job | None:
@@ -85,7 +127,10 @@ class JobStore:
                 "UPDATE jobs SET status = 'running', attempts = attempts + 1, updated_at = ?, error = NULL WHERE id = ?",
                 (_now(), row["id"]),
             )
-            job = self._job(db.execute("SELECT * FROM jobs WHERE id = ?", (row["id"],)).fetchone())
+            job = self._job(db.execute(
+                "SELECT id, question, status, attempts, created_at, updated_at, artifact_path, error FROM jobs WHERE id = ?",
+                (row["id"],),
+            ).fetchone())
             db.commit()
             return job
 
