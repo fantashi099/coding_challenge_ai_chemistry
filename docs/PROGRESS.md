@@ -29,3 +29,8 @@
 - Validation: dependency sync completed from cache and `git diff --check` passes.
 - Current blocker: none for the local single-worker MVP.
 - Next action: start API and worker together and submit one real job using the configured `.env`.
+- Requested revision: explicitly document Swagger UI, prevent duplicate jobs for normalized-identical questions, reuse completed artifacts, and promote successfully rendered LLM plans into learned fallbacks for new topics.
+- Decision: deduplicate with a database-enforced normalized `question_key`; avoid semantic/fuzzy matching in the MVP.
+- Decision: promote learned fallbacks only after end-to-end render success and revalidate them on read. Resolution order will be live LLM, learned fallback, curated fallback, then failure.
+- Current state: revision is documented in plan 002 but not implemented.
+- Next action: implement schema migration and `get_or_create`, then Swagger models/tests, then learned fallback storage and worker promotion.
