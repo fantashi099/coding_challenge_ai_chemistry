@@ -21,6 +21,14 @@ def test_schema_rejects_too_few_scenes_and_short_narration():
         )
 
 
+def test_schema_rejects_repeated_visual_template():
+    plan = next(iter(CURATED_PLANS.values())).model_dump()
+    for scene in plan["scenes"]:
+        scene["visual_kind"] = "covalent_sharing"
+    with pytest.raises(ValidationError, match="first scene must be title"):
+        VideoPlan.model_validate(plan)
+
+
 def test_curated_plans_are_valid():
     assert len(CURATED_PLANS) == 3
     assert all(4 <= len(plan.scenes) <= 7 for plan in CURATED_PLANS.values())
@@ -57,7 +65,9 @@ def test_planner_accepts_structured_response():
     def success(request: httpx.Request) -> httpx.Response:
         body = json.loads(request.content)
         assert body["response_format"]["json_schema"]["strict"] is True
-        assert "cyan and green neon accents" in body["messages"][0]["content"]
+        prompt = body["messages"][0]["content"]
+        assert "cyan/green neon accents" in prompt
+        assert "never use one kind more than twice" in prompt
         return httpx.Response(
             200,
             json={

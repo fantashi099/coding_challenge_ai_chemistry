@@ -7,16 +7,28 @@ from pydantic import ValidationError
 from .curated import curated_plan
 from .models import VideoPlan
 
-SYSTEM_PROMPT = """You are scripting a short, animated high-school chemistry explainer.
-Build a coherent 4–7 scene journey: open with the core question, develop one idea per scene,
-and finish with a concise recap. Write natural spoken narration totaling 140–360 words.
-Keep visual_text extremely short and diagram-friendly; do not repeat the narration on screen.
-Choose the supported visual_kind that best teaches each idea.
+SYSTEM_PROMPT = """Create an accurate 4–7 scene high-school chemistry explainer.
 
-The Manim visual style is a cinematic technical explainer: a pure black canvas, sparse white
-type, cyan and green neon accents, thin glowing outlines, animated nodes and connecting paths,
-and generous empty space. Favor visual transformations and progressive reveals over bullet-heavy
-slides. Do not request photos, logos, branded elements, or unsupported visual effects."""
+SCRIPT
+- Open with the core question, teach one idea per scene, and end with a recap.
+- Write natural spoken narration totaling 140–360 words.
+- Keep visual_text short and diagram-friendly. Never copy narration onto the screen.
+- Use concept headings such as "Reading the scale"; never write "Scene 2" or similar labels.
+
+VISUAL PLAN — these rules are mandatory
+- Scene 1: title. Final scene: recap.
+- Use at least 3 distinct visual kinds, and never use one kind more than twice.
+- ph_scale: a pH number line, acidity/basicity range, or positioned pH examples.
+- covalent_sharing: only electron-pair sharing or covalent bonds.
+- ionic_transfer: only electron transfer and charged ions.
+- bond_comparison: side-by-side ionic/covalent contrasts.
+- bullets: short rules or explanations, including a logarithmic tenfold-change rule.
+- Every scene must advance a different visual idea. Do not repeat one animation with new text.
+
+STYLE
+Design for Manim as a cinematic technical explainer: pure black canvas, sparse white type,
+cyan/green neon accents, thin glowing outlines, animated nodes and paths, progressive reveals,
+and generous empty space. Do not request photos, logos, branding, or unsupported effects."""
 
 
 class PlanningError(RuntimeError):

@@ -11,4 +11,11 @@
 - Blocker: no `OPENROUTER_API_KEY` is available locally, so live LLM generation has not been exercised. The three required topics use validated curated fallbacks.
 - Next action: configure an OpenRouter key and review one dynamically scripted video before starting any service layer.
 - Decision: match the supplied XGBoost reference's visual language: black canvas, sparse type, cyan/green glow, outlined cards, animated nodes, and progressive reveals; omit its branding and content.
-- Next action: render and review a chemistry sample with the reference-inspired theme.
+- Finding: Qwen assigned `covalent_sharing` to every scene in the pH sample, causing one animation template to repeat with different text.
+- Decision: require title/recap endpoints, at least three visual kinds, no kind more than twice, and explicit chemistry-to-visual selection rules; invalid plans retry before fallback.
+- Validation: the first live Qwen check exhausted both attempts and safely selected the varied curated pH plan (`title`, `ph_scale`, `bullets`, `ph_scale`, `recap`).
+- Decision: remove a prompt conflict that classified three common pH scenes as `ph_scale` while limiting every kind to two uses; logarithmic rules now route to `bullets`.
+- Validation: 7 tests pass after adding the repeated-template regression guard and revising the prompt.
+- Validation: a second live Qwen planner check was manually stopped after more than 90 seconds to preserve usage; it had not completed, rendered, or overwritten an artifact.
+- Current blocker: `qwen/qwen3.7-flash` response latency prevents confirming the revised prompt against a fresh non-fallback plan within the current usage budget.
+- Next action: run one planner-only check when budget permits; inspect returned headings and visual kinds before spending time on a full render.

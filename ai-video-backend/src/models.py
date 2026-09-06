@@ -29,4 +29,9 @@ class VideoPlan(BaseModel):
         words = sum(len(scene.narration.split()) for scene in self.scenes)
         if not 140 <= words <= 360:
             raise ValueError(f"total narration must be 140–360 words, got {words}")
+        kinds = [scene.visual_kind for scene in self.scenes]
+        if kinds[0] != VisualKind.TITLE or kinds[-1] != VisualKind.RECAP:
+            raise ValueError("the first scene must be title and the final scene must be recap")
+        if len(set(kinds)) < 3 or max(kinds.count(kind) for kind in set(kinds)) > 2:
+            raise ValueError("use at least 3 visual kinds and no kind more than twice")
         return self
