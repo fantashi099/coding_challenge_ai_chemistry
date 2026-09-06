@@ -3,7 +3,7 @@ import sqlite3
 
 import pytest
 
-from src.jobs import JobStore
+from src.jobs import JobStore, question_key
 
 
 def test_create_list_atomic_claim_and_transitions(tmp_path):
@@ -62,12 +62,13 @@ def test_normalized_question_is_deduplicated_concurrently(tmp_path):
         return JobStore(store.path).get_or_create(question)
 
     with ThreadPoolExecutor(max_workers=2) as pool:
-        results = list(pool.map(submit, ["  HOW   does pH work? ", "how does ph work?"]))
+        results = list(pool.map(submit, ["  HOW   does pH work? ", "how does ph work"]))
     assert results[0][0].id == results[1][0].id
     assert sorted(created for _, created in results) == [False, True]
     assert len(store.list()) == 1
     events = store.events(results[0][0].id)
     assert [event.event for event in events] == ["queued", "reused"]
+    assert question_key("What is Na+?") != question_key("What is Na?")
 
 
 def test_event_details_are_capped_and_unknown_jobs_fail(tmp_path):
@@ -97,6 +98,29 @@ def test_legacy_schema_migration_retains_duplicate_rows(tmp_path):
 
     store = JobStore(path)
     canonical, created = store.get_or_create("SAME QUESTION")
+    assert canonical.id == "oldest"
+    assert created is False
+    assert len(store.list()) == 2
+
+
+def test_v3_migration_collapses_surrounding_punctuation_to_oldest_job(tmp_path):
+    path = tmp_path / "v3.sqlite3"
+    JobStore(path)
+    with sqlite3.connect(path) as db:
+        db.execute("PRAGMA user_version=3")
+        rows = [
+            ("oldest", "Why bond?", "why bond?", "completed", 1, "2026-01-01", "2026-01-01"),
+            ("newer", "Why bond", "why bond", "completed", 1, "2026-01-02", "2026-01-02"),
+        ]
+        db.executemany(
+            """INSERT INTO jobs
+               (id, question, question_key, status, attempts, created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            rows,
+        )
+
+    store = JobStore(path)
+    canonical, created = store.get_or_create("¿WHY BOND?!")
     assert canonical.id == "oldest"
     assert created is False
     assert len(store.list()) == 2

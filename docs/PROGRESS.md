@@ -54,6 +54,10 @@
 
 ## 2026-09-07
 
+- Fix: deduplicate questions that differ only by surrounding punctuation, including `?`, while preserving meaningful internal punctuation such as chemical notation; migrate existing version-3 keys with the oldest job remaining canonical.
+- Validation: all 25 tests pass, including concurrent punctuation-insensitive submission, preservation of `Na+`, and migration of punctuation-colliding legacy rows.
+- Current blocker: none.
+- Next action: restart the API and worker so the live SQLite database migrates to question-key version 4, then submit the with/without-`?` variants and confirm `reused: true`.
 - Implementation: persist sanitized diagnostics for every OpenRouter attempt in early-written generation metadata and durable `planner_attempt_succeeded|failed` job events; learned and curated fallbacks retain the primary attempt history.
 - Security: allowlist token/cost fields, store HTTP status without response bodies, omit rejected Pydantic inputs, cap validation detail, and never persist request headers, prompts, URLs, raw responses, or stack traces.
 - Validation: all 24 tests pass, covering successful, invalid-plan, HTTP-error, fallback, and post-planning generation-failure paths.

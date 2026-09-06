@@ -61,7 +61,7 @@ Use WAL mode, an index on `(status, created_at)`, and `BEGIN IMMEDIATE` while se
 
 ## Question identity and deduplication
 
-Create a deterministic `question_key` by applying Unicode NFKC normalization, trimming, collapsing whitespace, and case-folding. Do not remove punctuation or use embeddings: exact normalized matching is predictable and cannot accidentally reuse a different lesson.
+Create a deterministic `question_key` by applying Unicode NFKC normalization, trimming, collapsing whitespace, case-folding, and removing surrounding punctuation. Preserve internal punctuation and do not use embeddings: normalized matching remains predictable and cannot accidentally reuse a different lesson.
 
 - Add `question_key TEXT NOT NULL UNIQUE` to jobs.
 - Replace plain creation with a transactional `get_or_create(question)` using the unique constraint as the concurrency authority.

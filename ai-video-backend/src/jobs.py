@@ -13,7 +13,12 @@ def _now() -> str:
 
 
 def question_key(question: str) -> str:
-    return " ".join(unicodedata.normalize("NFKC", question).casefold().split())
+    normalized = " ".join(unicodedata.normalize("NFKC", question).casefold().split())
+    while normalized and unicodedata.category(normalized[0]).startswith("P"):
+        normalized = normalized[1:].lstrip()
+    while normalized and unicodedata.category(normalized[-1]).startswith("P"):
+        normalized = normalized[:-1].rstrip()
+    return normalized
 
 
 @dataclass(frozen=True)
@@ -50,6 +55,7 @@ class JobStore:
         path.parent.mkdir(parents=True, exist_ok=True)
         with self._connect() as db:
             db.execute("PRAGMA journal_mode=WAL")
+            version = db.execute("PRAGMA user_version").fetchone()[0]
             db.execute(
                 """CREATE TABLE IF NOT EXISTS jobs (
                     id TEXT PRIMARY KEY,
@@ -63,7 +69,9 @@ class JobStore:
                     error TEXT
                 )"""
             )
-            self._migrate_question_keys(db)
+            if version < 4:
+                db.execute("DROP INDEX IF EXISTS jobs_question_key")
+            self._migrate_question_keys(db, rebuild=version < 4)
             db.execute("CREATE INDEX IF NOT EXISTS jobs_queue ON jobs(status, created_at)")
             db.execute("CREATE UNIQUE INDEX IF NOT EXISTS jobs_question_key ON jobs(question_key)")
             db.execute(
@@ -77,7 +85,7 @@ class JobStore:
                 )"""
             )
             db.execute("CREATE INDEX IF NOT EXISTS job_events_job ON job_events(job_id, id)")
-            db.execute("PRAGMA user_version=3")
+            db.execute("PRAGMA user_version=4")
 
     def _connect(self) -> sqlite3.Connection:
         db = sqlite3.connect(self.path, timeout=10, isolation_level=None)
@@ -103,11 +111,13 @@ class JobStore:
         return Job(**dict(row)) if row else None
 
     @staticmethod
-    def _migrate_question_keys(db: sqlite3.Connection) -> None:
+    def _migrate_question_keys(db: sqlite3.Connection, rebuild: bool = False) -> None:
         columns = {row["name"] for row in db.execute("PRAGMA table_info(jobs)")}
-        if "question_key" in columns:
+        if "question_key" not in columns:
+            db.execute("ALTER TABLE jobs ADD COLUMN question_key TEXT")
+            rebuild = True
+        if not rebuild:
             return
-        db.execute("ALTER TABLE jobs ADD COLUMN question_key TEXT")
         seen: set[str] = set()
         for row in db.execute("SELECT id, question FROM jobs ORDER BY created_at, id"):
             key = question_key(row["question"])
