@@ -19,3 +19,9 @@
 - Validation: a second live Qwen planner check was manually stopped after more than 90 seconds to preserve usage; it had not completed, rendered, or overwritten an artifact.
 - Current blocker: `qwen/qwen3.7-flash` response latency prevents confirming the revised prompt against a fresh non-fallback plan within the current usage budget.
 - Next action: run one planner-only check when budget permits; inspect returned headings and visual kinds before spending time on a full render.
+
+## Backend service phase
+
+- Decision: plan the FastAPI/SQLite worker boundary in `docs/plans/002-backend-job-service.md` before continuing implementation.
+- Current state: a service code draft exists locally but is unverified and uncommitted; implementation is paused pending plan review.
+- Next action: review plan 002, then complete store, worker, API tests, documentation, and validation in that order.
