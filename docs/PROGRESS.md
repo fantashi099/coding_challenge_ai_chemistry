@@ -19,6 +19,11 @@
 - Validation: a second live Qwen planner check was manually stopped after more than 90 seconds to preserve usage; it had not completed, rendered, or overwritten an artifact.
 - Current blocker: `qwen/qwen3.7-flash` response latency prevents confirming the revised prompt against a fresh non-fallback plan within the current usage budget.
 - Next action: run one planner-only check when budget permits; inspect returned headings and visual kinds before spending time on a full render.
+- Decision: attack the repeated-template failure from three sides: per-scene kind selection with a covalent/pH anti-pattern callout and a worked kind sequence in the prompt; feed the validation error back to the model on retry instead of redrawing a near-identical low-temperature sample; and expose `PLANNER_TIMEOUT_SECONDS` (default 120) because a 60-second budget caused live plans to fall back even when the prompt was satisfied.
+- Validation: single live planner request with the revised prompt returned a valid varied non-fallback plan (`title`, `ph_scale`, `bullets`, `ph_scale`, `bullets`, `recap`) in ~110s; a second confirmed run passed with fallback disabled.
+- Implementation: added `scripts/check_prompt.py` for one planner-only request (no retry, no fallback, no render) so prompt changes can be judged in a single call.
+- User feedback: full renders are too slow to wait on during iteration; the user runs the render and reviews the MP4, then reports back.
+- Next action: user runs `uv run python scripts/generate_video.py --question "How does the pH scale work?" --output artifacts/ph-scale_qwen` (with `PLANNER_TIMEOUT_SECONDS=120` in `.env`) and reviews whether scenes now use distinct animations.
 
 ## Backend service phase
 
@@ -38,3 +43,11 @@
 - Validation: all 20 tests pass; `git diff --check` passes.
 - Current blocker: none.
 - Next action: run API and worker with the configured `.env`, submit a new topic, then resubmit a normalized variant to verify real artifact reuse.
+
+## Durable job run log
+
+- Decision: store append-only lifecycle events in SQLite and expose them through `GET /videos/{id}/logs`; keep console logs for operators.
+- Implementation: job creation, reuse, claims, retries, recovery, terminal transitions, generation, artifact publication, and learned-fallback promotion now emit ordered events.
+- Validation: all 21 tests pass, including event ordering, attempt numbers, detail limits, concurrent reuse, worker milestones, API lookup, and OpenAPI documentation; `git diff --check` passes.
+- Current blocker: none.
+- Next action: run the API and worker with `.env`, then inspect one real job's `/logs` response while it completes.
