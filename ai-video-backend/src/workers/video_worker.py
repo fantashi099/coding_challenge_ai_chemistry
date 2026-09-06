@@ -16,6 +16,16 @@ from ..planner import OpenRouterPlanner
 logger = logging.getLogger(__name__)
 
 
+def _record_planner_attempts(store: JobStore, job_id: str, job_attempt: int, attempts) -> None:
+    for attempt in attempts:
+        data = dict(attempt.as_dict() if hasattr(attempt, "as_dict") else attempt)
+        if data.get("detail"):
+            data["detail"] = data["detail"][:500]
+        outcome = data.get("outcome")
+        event = "planner_attempt_succeeded" if outcome == "succeeded" else "planner_attempt_failed"
+        store.record_event(job_id, event, job_attempt, json.dumps(data, separators=(",", ":")))
+
+
 def _record_fallback(
     generator: VideoGenerator, fallbacks: LearnedFallbackStore, question: str, work_dir: Path
 ) -> str:
@@ -43,6 +53,11 @@ def run_once(
     try:
         store.record_event(job.id, "generation_started", job.attempts)
         generated = generator.generate(job.question, work_dir)
+        metadata_path = work_dir / "metadata.json"
+        if metadata_path.is_file():
+            _record_planner_attempts(
+                store, job.id, job.attempts, json.loads(metadata_path.read_text()).get("planner_attempts", [])
+            )
         store.record_event(job.id, "generation_finished", job.attempts)
         final = artifact_root / job.id / "video.mp4"
         final.parent.mkdir(parents=True, exist_ok=True)
@@ -63,6 +78,11 @@ def run_once(
         store.complete(job.id, final.resolve())
         logger.info("completed video job %s", job.id)
     except Exception as exc:
+        attempts = getattr(exc, "attempts", ())
+        metadata_path = work_dir / "metadata.json"
+        if not attempts and metadata_path.is_file():
+            attempts = json.loads(metadata_path.read_text()).get("planner_attempts", [])
+        _record_planner_attempts(store, job.id, job.attempts, attempts)
         store.fail_attempt(job.id, f"{type(exc).__name__}: {exc}")
         logger.exception("video job %s attempt %s failed", job.id, job.attempts)
     return True

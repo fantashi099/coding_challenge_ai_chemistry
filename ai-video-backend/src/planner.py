@@ -1,4 +1,5 @@
-from dataclasses import dataclass
+import time
+from dataclasses import asdict, dataclass
 from typing import Any
 
 import httpx
@@ -34,8 +35,24 @@ cyan/green neon accents, thin glowing outlines, animated nodes and paths, progre
 and generous empty space. Do not request photos, logos, branding, or unsupported effects."""
 
 
+@dataclass(frozen=True)
+class PlannerAttempt:
+    attempt: int
+    outcome: str
+    elapsed_seconds: float
+    http_status: int | None = None
+    detail: str | None = None
+    usage: dict[str, int | float] | None = None
+    cost_usd: float | None = None
+
+    def as_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
 class PlanningError(RuntimeError):
-    pass
+    def __init__(self, message: str, attempts: tuple[PlannerAttempt, ...] = ()):
+        super().__init__(message)
+        self.attempts = attempts
 
 
 @dataclass(frozen=True)
@@ -45,6 +62,48 @@ class PlanningResult:
     usage: dict[str, Any]
     cost: float | None
     fallback_used: bool
+    attempts: tuple[PlannerAttempt, ...] = ()
+
+
+def _usage(payload: Any) -> dict[str, int | float]:
+    source = payload.get("usage", {}) if isinstance(payload, dict) else {}
+    allowed = ("prompt_tokens", "completion_tokens", "total_tokens", "cost")
+    return {key: source[key] for key in allowed if isinstance(source.get(key), (int, float))}
+
+
+def _failure(
+    attempt: int,
+    started: float,
+    exc: Exception,
+    payload: Any,
+    response: httpx.Response | None,
+) -> PlannerAttempt:
+    status = response.status_code if response else None
+    if isinstance(exc, httpx.TimeoutException):
+        outcome, detail = "timeout", "OpenRouter request timed out"
+    elif isinstance(exc, httpx.HTTPStatusError):
+        status = exc.response.status_code
+        outcome, detail = "http_error", f"OpenRouter returned HTTP {status}"
+    elif isinstance(exc, ValidationError):
+        errors = exc.errors(include_url=False, include_context=False, include_input=False)
+        detail = "; ".join(
+            f"{'.'.join(map(str, error['loc'])) or 'plan'}: {error['msg']}" for error in errors
+        )
+        outcome = "validation_failed"
+    elif isinstance(exc, (KeyError, TypeError, ValueError)):
+        outcome, detail = "invalid_response", "OpenRouter response lacked valid structured content"
+    else:
+        outcome, detail = "network_error", type(exc).__name__
+    usage = _usage(payload)
+    return PlannerAttempt(
+        attempt,
+        outcome,
+        round(time.monotonic() - started, 3),
+        status,
+        detail[:1000],
+        usage or None,
+        usage.get("cost"),
+    )
 
 
 class OpenRouterPlanner:
@@ -56,13 +115,14 @@ class OpenRouterPlanner:
         self.client = client or httpx.Client(timeout=timeout)
 
     def create(self, question: str) -> PlanningResult:
-        last_error: Exception = PlanningError("OPENROUTER_API_KEY is not configured")
+        attempts: list[PlannerAttempt] = []
         if self.api_key:
             messages: list[dict[str, str]] = [
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": question},
             ]
-            for _ in range(2):
+            for attempt in range(1, 3):
+                started, payload, response = time.monotonic(), None, None
                 try:
                     response = self.client.post(
                         self.endpoint,
@@ -84,10 +144,22 @@ class OpenRouterPlanner:
                     response.raise_for_status()
                     payload = response.json()
                     plan = VideoPlan.model_validate_json(payload["choices"][0]["message"]["content"])
-                    usage = payload.get("usage", {})
-                    return PlanningResult(plan, self.model, usage, usage.get("cost"), False)
+                    usage = _usage(payload)
+                    attempts.append(
+                        PlannerAttempt(
+                            attempt,
+                            "succeeded",
+                            round(time.monotonic() - started, 3),
+                            response.status_code,
+                            usage=usage or None,
+                            cost_usd=usage.get("cost"),
+                        )
+                    )
+                    return PlanningResult(
+                        plan, self.model, usage, usage.get("cost"), False, tuple(attempts)
+                    )
                 except (httpx.HTTPError, KeyError, TypeError, ValueError, ValidationError) as exc:
-                    last_error = exc
+                    attempts.append(_failure(attempt, started, exc, payload, response))
                     messages.append(
                         {
                             "role": "user",
@@ -97,5 +169,6 @@ class OpenRouterPlanner:
 
         fallback = curated_plan(question)
         if fallback:
-            return PlanningResult(fallback, self.model, {}, None, True)
-        raise PlanningError(f"Could not create a valid plan after 2 attempts: {last_error}") from last_error
+            return PlanningResult(fallback, self.model, {}, None, True, tuple(attempts))
+        reason = "OPENROUTER_API_KEY is not configured" if not self.api_key else "2 attempts failed"
+        raise PlanningError(f"Could not create a valid plan: {reason}", tuple(attempts))

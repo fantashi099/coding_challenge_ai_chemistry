@@ -80,18 +80,18 @@ class FallbackPlanner:
         self.last_source = "none"
         try:
             result = self.primary.create(question)
-        except PlanningError:
+        except PlanningError as exc:
             cached = self.learned.use(question)
             if not cached:
                 raise
             self.last_source = "learned"
-            return PlanningResult(cached.plan, cached.source_model, {}, None, True)
+            return PlanningResult(cached.plan, cached.source_model, {}, None, True, exc.attempts)
 
         if not result.fallback_used:
             return result
         cached = self.learned.use(question)
         if cached:
             self.last_source = "learned"
-            return PlanningResult(cached.plan, cached.source_model, {}, None, True)
+            return PlanningResult(cached.plan, cached.source_model, {}, None, True, result.attempts)
         self.last_source = "curated"
         return result

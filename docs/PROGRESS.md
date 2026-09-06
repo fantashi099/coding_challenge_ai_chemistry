@@ -54,6 +54,11 @@
 
 ## 2026-09-07
 
+- Implementation: persist sanitized diagnostics for every OpenRouter attempt in early-written generation metadata and durable `planner_attempt_succeeded|failed` job events; learned and curated fallbacks retain the primary attempt history.
+- Security: allowlist token/cost fields, store HTTP status without response bodies, omit rejected Pydantic inputs, cap validation detail, and never persist request headers, prompts, URLs, raw responses, or stack traces.
+- Validation: all 24 tests pass, covering successful, invalid-plan, HTTP-error, fallback, and post-planning generation-failure paths.
+- Current blocker: none; existing jobs do not gain diagnostics retroactively.
+- Next action: restart the worker and regenerate the covalent question to read its exact planner outcome from `/videos/{id}/logs` and `metadata.json`.
 - Decision: increase the planner request timeout default from 120 to 300 seconds for slow Qwen responses; with two attempts, a job may now wait up to roughly ten minutes before fallback.
 - Decision: publish only the three accepted jobs' final MP4 files, not WAVs, intermediate clips, Manim caches, or machine-local concat manifests.
 - Validation: all three published samples contain H.264 video and AAC audio, play under `ffprobe`, and run 61.892–114.025 seconds; the root README links each question directly to its MP4.

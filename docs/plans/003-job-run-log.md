@@ -28,6 +28,7 @@ Index `(job_id, id)`. State-transition events must be inserted in the same trans
 - `reused`: a normalized duplicate returned the existing job.
 - `running`: worker claimed an attempt.
 - `generation_started` and `generation_finished`: worker entered and returned from `VideoGenerator`.
+- `planner_attempt_succeeded` and `planner_attempt_failed`: sanitized OpenRouter outcome, elapsed time, HTTP status, validation detail, and allowlisted usage/cost.
 - `fallback_promoted` or `fallback_promotion_failed`: learned-fallback result.
 - `artifact_published`: final MP4 was atomically moved into place.
 - `retry_scheduled`: first attempt failed.

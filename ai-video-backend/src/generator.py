@@ -50,6 +50,16 @@ class VideoGenerator:
         (output / "plan.json").write_text(
             json.dumps(planning.plan.model_dump(mode="json"), indent=2) + "\n"
         )
+        metadata = {
+            "question": question,
+            "model": planning.model,
+            "token_usage": planning.usage,
+            "reported_llm_cost_usd": planning.cost,
+            "fallback_used": planning.fallback_used,
+            "planner_attempts": [attempt.as_dict() for attempt in planning.attempts],
+        }
+        metadata_path = output / "metadata.json"
+        metadata_path.write_text(json.dumps(metadata, indent=2) + "\n")
 
         visuals: list[Path] = []
         audio: list[Path] = []
@@ -63,14 +73,9 @@ class VideoGenerator:
 
         video = output / "video.mp4"
         duration = self.composer.compose(visuals, audio, video)
-        metadata = {
-            "question": question,
-            "model": planning.model,
-            "token_usage": planning.usage,
-            "reported_llm_cost_usd": planning.cost,
-            "fallback_used": planning.fallback_used,
+        metadata.update({
             "duration_seconds": round(duration, 3),
             "elapsed_seconds": round(time.monotonic() - started, 3),
-        }
-        (output / "metadata.json").write_text(json.dumps(metadata, indent=2) + "\n")
+        })
+        metadata_path.write_text(json.dumps(metadata, indent=2) + "\n")
         return video

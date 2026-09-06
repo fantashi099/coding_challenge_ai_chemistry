@@ -50,6 +50,11 @@ def test_planner_retries_then_uses_curated_fallback():
     result = planner.create("How does the pH scale work?")
     assert calls == 2
     assert result.fallback_used is True
+    assert [attempt.outcome for attempt in result.attempts] == [
+        "validation_failed", "validation_failed"
+    ]
+    assert all(attempt.http_status == 200 for attempt in result.attempts)
+    assert all("input_value" not in (attempt.detail or "") for attempt in result.attempts)
     follow_up = json.loads(requests[1].content)["messages"][-1]
     assert follow_up["role"] == "user"
     assert "rejected" in follow_up["content"]
@@ -57,11 +62,13 @@ def test_planner_retries_then_uses_curated_fallback():
 
 def test_planner_rejects_unknown_question_after_retry():
     def failure(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(503)
+        return httpx.Response(503, text="raw provider response must not be persisted")
 
     planner = OpenRouterPlanner("key", "test-model", httpx.Client(transport=httpx.MockTransport(failure)))
-    with pytest.raises(PlanningError, match="after 2 attempts"):
+    with pytest.raises(PlanningError, match="2 attempts failed") as raised:
         planner.create("Explain an unknown chemistry topic")
+    assert [attempt.http_status for attempt in raised.value.attempts] == [503, 503]
+    assert all(attempt.detail == "OpenRouter returned HTTP 503" for attempt in raised.value.attempts)
 
 
 def test_planner_accepts_structured_response():
@@ -88,3 +95,5 @@ def test_planner_accepts_structured_response():
     assert result.plan == plan
     assert result.cost == 0.001
     assert result.fallback_used is False
+    assert result.attempts[0].outcome == "succeeded"
+    assert result.attempts[0].usage == {"prompt_tokens": 10, "completion_tokens": 20, "cost": 0.001}
