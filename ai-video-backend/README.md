@@ -11,7 +11,7 @@ uv sync
 cp .env.example .env
 ```
 
-Set `OPENROUTER_API_KEY` in `.env`; Piper downloads the configured voice on first generation. Without an API key, only the three required topics can run through their curated fallbacks.
+Set `OPENROUTER_API_KEY` in `.env`. Optionally set `ELEVENLABS_API_KEY` to use the River voice with the `eleven_turbo_v2_5` model; without it, narration automatically uses local Piper, which downloads its configured voice on first generation. Without an OpenRouter key, only the three required topics can run through their curated fallbacks.
 
 ## Run
 

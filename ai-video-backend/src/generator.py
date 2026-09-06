@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Protocol
 
 from .config import Settings
-from .media import FfmpegComposer, ManimRenderer, PiperNarrator, wav_duration
+from .media import ElevenLabsNarrator, FfmpegComposer, ManimRenderer, PiperNarrator, wav_duration
 from .planner import OpenRouterPlanner, PlanningResult
 
 
@@ -31,8 +31,14 @@ class VideoGenerator:
             self.settings.openrouter_model,
             timeout=self.settings.planner_timeout_seconds,
         )
-        self.narrator = narrator or PiperNarrator(
-            self.settings.piper_model, self.settings.piper_data_dir
+        self.narrator = narrator or (
+            ElevenLabsNarrator(
+                self.settings.elevenlabs_api_key,
+                self.settings.elevenlabs_voice_id,
+                self.settings.elevenlabs_model,
+            )
+            if self.settings.elevenlabs_api_key
+            else PiperNarrator(self.settings.piper_model, self.settings.piper_data_dir)
         )
         self.renderer = renderer or ManimRenderer()
         self.composer = composer or FfmpegComposer()

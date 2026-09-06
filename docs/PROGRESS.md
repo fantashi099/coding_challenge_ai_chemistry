@@ -54,6 +54,11 @@
 
 ## 2026-09-07
 
+- Decision: prefer ElevenLabs River with `eleven_turbo_v2_5` when `ELEVENLABS_API_KEY` is configured; otherwise retain local Piper without changing entry points or the generation pipeline.
+- Implementation: added direct HTTPX speech generation and FFmpeg MP3-to-WAV conversion using the existing dependencies; voice and model remain environment-configurable.
+- Validation: all 23 tests pass, including provider selection, ElevenLabs request parameters, and audio conversion invocation. Live ElevenLabs generation was not attempted with the exposed credential.
+- Current blocker: rotate the ElevenLabs key disclosed in chat before using the integration, then place only the replacement in the ignored `.env`.
+- Next action: generate one scene with the rotated key and review River's pronunciation, pacing, and audio quality.
 - Documentation: added the durable job-log storage location and `GET /videos/{id}/logs` example to the backend README.
 - Finding: scene reveals consumed a fixed 68% of narration time, making complex visuals crawl; the title scene also subtracted an unplayed timing segment and clipped about 1.5 seconds of narration.
 - Implementation: capped visual reveals at six seconds, grouped the pH cells into one staged reveal, and padded each rendered scene by one frame so FFmpeg preserves the complete WAV.

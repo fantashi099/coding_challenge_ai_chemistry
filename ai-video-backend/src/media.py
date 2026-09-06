@@ -6,6 +6,7 @@ import sys
 import wave
 from pathlib import Path
 
+import httpx
 from manim import (
     BLUE_D, Circle, Create, Dot, DOWN, FadeIn, GREEN_D, GrowFromCenter,
     LaggedStart, LEFT, Line, ManimColor, ORIGIN, RIGHT, RoundedRectangle,
@@ -181,6 +182,37 @@ class PiperNarrator:
             raise RuntimeError("Piper CLI is unavailable; run `uv sync` first")
         destination.parent.mkdir(parents=True, exist_ok=True)
         subprocess.run([executable, "--model", str(self._model_path()), "--output_file", str(destination)], input=text, text=True, check=True)
+
+
+class ElevenLabsNarrator:
+    endpoint = "https://api.elevenlabs.io/v1/text-to-speech"
+
+    def __init__(
+        self, api_key: str, voice_id: str, model: str, client: httpx.Client | None = None
+    ):
+        self.api_key, self.voice_id, self.model = api_key, voice_id, model
+        self.client = client or httpx.Client(timeout=120)
+
+    def narrate(self, text: str, destination: Path) -> None:
+        executable = shutil.which("ffmpeg")
+        if not executable:
+            raise RuntimeError("ffmpeg is required for ElevenLabs narration")
+        response = self.client.post(
+            f"{self.endpoint}/{self.voice_id}",
+            headers={"xi-api-key": self.api_key},
+            params={"output_format": "mp3_44100_128"},
+            json={"text": text, "model_id": self.model},
+        )
+        response.raise_for_status()
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        subprocess.run(
+            [
+                executable, "-loglevel", "error", "-y", "-f", "mp3", "-i", "pipe:0",
+                "-c:a", "pcm_s16le", str(destination),
+            ],
+            input=response.content,
+            check=True,
+        )
 
 
 class ToneNarrator:
