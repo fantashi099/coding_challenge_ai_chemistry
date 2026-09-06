@@ -23,5 +23,9 @@
 ## Backend service phase
 
 - Decision: plan the FastAPI/SQLite worker boundary in `docs/plans/002-backend-job-service.md` before continuing implementation.
-- Current state: a service code draft exists locally but is unverified and uncommitted; implementation is paused pending plan review.
-- Next action: review plan 002, then complete store, worker, API tests, documentation, and validation in that order.
+- Decision: keep the API, SQLite store, polling worker, and artifact publication as separate boundaries while reusing `VideoGenerator` unchanged.
+- Decision: cap jobs at two total attempts; startup recovery requeues attempt one but marks an interrupted final attempt failed.
+- Validation: all 13 tests pass, covering atomic claims, transitions, recovery, worker publication/retries, API lifecycle/artifacts, planner behavior, and offline rendering.
+- Validation: dependency sync completed from cache and `git diff --check` passes.
+- Current blocker: none for the local single-worker MVP.
+- Next action: start API and worker together and submit one real job using the configured `.env`.

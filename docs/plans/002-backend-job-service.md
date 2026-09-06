@@ -1,5 +1,7 @@
 # 002 — Backend job service
 
+Status: implemented and verified on 2026-09-06.
+
 ## Goal
 
 Wrap the existing `VideoGenerator` in a small asynchronous backend: clients submit a chemistry question, poll its durable status, and download the MP4 only after generation succeeds.
@@ -82,6 +84,8 @@ Continue using the existing `.env` configuration for OpenRouter and Piper. Add o
 3. API tests cover creation, listing, lookup, unknown jobs, unfinished artifacts, completed artifact streaming, missing completed files, and visible failure details.
 4. Run the complete existing CLI/render suite to ensure the service wrapper does not change generation behavior.
 5. Run `git diff --check` and document results in `docs/PROGRESS.md` before the phase commit.
+
+Result: all 13 repository tests pass, including the existing render smoke test; `git diff --check` passes.
 
 ## Run contract
 
