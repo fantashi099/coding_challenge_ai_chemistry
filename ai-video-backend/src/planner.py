@@ -7,6 +7,17 @@ from pydantic import ValidationError
 from .curated import curated_plan
 from .models import VideoPlan
 
+SYSTEM_PROMPT = """You are scripting a short, animated high-school chemistry explainer.
+Build a coherent 4–7 scene journey: open with the core question, develop one idea per scene,
+and finish with a concise recap. Write natural spoken narration totaling 140–360 words.
+Keep visual_text extremely short and diagram-friendly; do not repeat the narration on screen.
+Choose the supported visual_kind that best teaches each idea.
+
+The Manim visual style is a cinematic technical explainer: a pure black canvas, sparse white
+type, cyan and green neon accents, thin glowing outlines, animated nodes and connecting paths,
+and generous empty space. Favor visual transformations and progressive reveals over bullet-heavy
+slides. Do not request photos, logos, branded elements, or unsupported visual effects."""
+
 
 class PlanningError(RuntimeError):
     pass
@@ -43,7 +54,7 @@ class OpenRouterPlanner:
                             "messages": [
                                 {
                                     "role": "system",
-                                    "content": "Create an accurate, concise high-school chemistry video plan. Narration must total 140–360 words. Visual text must be brief and readable on a slide.",
+                                    "content": SYSTEM_PROMPT,
                                 },
                                 {"role": "user", "content": question},
                             ],

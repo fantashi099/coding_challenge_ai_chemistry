@@ -57,6 +57,7 @@ def test_planner_accepts_structured_response():
     def success(request: httpx.Request) -> httpx.Response:
         body = json.loads(request.content)
         assert body["response_format"]["json_schema"]["strict"] is True
+        assert "cyan and green neon accents" in body["messages"][0]["content"]
         return httpx.Response(
             200,
             json={

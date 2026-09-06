@@ -15,7 +15,7 @@ from manim import (
 
 from .models import Scene, VisualKind
 
-BG, PANEL, INK, MUTED, CYAN = "#071426", "#10233D", "#F7FAFC", "#B8C7DC", "#36D1DC"
+BG, INK, MUTED, CYAN, GREEN, GOLD = "#000000", "#F4F7F8", "#89969C", "#00E5F0", "#00F57A", "#F6CF65"
 
 
 def _fit(item, max_width: float):
@@ -47,21 +47,30 @@ class AnimatedSlide(ManimScene):
     position: tuple[int, int]
 
     def construct(self) -> None:
+        Text.set_default(font="DejaVu Sans")
         self.camera.background_color = ManimColor(BG)
-        panel = RoundedRectangle(width=13.5, height=7.2, corner_radius=0.25, color="#284765", fill_color=PANEL, fill_opacity=1)
-        title = _fit(Text(self.spec.heading, font_size=44, weight="BOLD", color=INK), 10.8).to_edge(UP, buff=0.48).to_edge(LEFT, buff=0.65)
-        page = Text(f"{self.position[0]}/{self.position[1]}", font_size=22, weight="BOLD", color=MUTED).to_edge(UP, buff=0.56).to_edge(RIGHT, buff=0.72)
-        footer = Text("CHEMISTRY IN MOTION", font_size=15, weight="BOLD", color=CYAN).to_edge(DOWN, buff=0.28).to_edge(LEFT, buff=0.66)
-        rule = Line(LEFT * 6.35, RIGHT * 6.35, color="#284765").shift(UP * 2.55)
+        ambient = VGroup(
+            Circle(radius=5.7, color=CYAN, stroke_width=2, stroke_opacity=0.05).shift(LEFT * 5.8 + DOWN * 3.8),
+            Circle(radius=4.8, color=GREEN, stroke_width=2, stroke_opacity=0.04).shift(RIGHT * 6.2 + UP * 4.0),
+        )
+        page_box = RoundedRectangle(width=0.52, height=0.42, corner_radius=0.06, color="#17272B", fill_color="#061013", fill_opacity=1)
+        page = Text(str(self.position[0]), font_size=13, color=MUTED).move_to(page_box)
+        page_mark = VGroup(page_box, page).to_edge(DOWN, buff=0.3).to_edge(RIGHT, buff=0.35)
         budget = max(0.2, self.scene_duration - 0.05)
-        self.add(panel)
-        self.play(Write(title), FadeIn(page), Create(rule), run_time=budget * 0.24)
+        self.add(ambient)
+        if self.spec.visual_kind == VisualKind.TITLE:
+            self.play(FadeIn(page_mark), run_time=budget * 0.12)
+        else:
+            heading = _fit(Text(self.spec.heading.upper(), font_size=24, weight="BOLD", color=INK), 8.6).to_edge(UP, buff=0.55)
+            heading_box = RoundedRectangle(width=heading.width + 0.48, height=heading.height + 0.32, corner_radius=0.08, color="#18363B", stroke_width=1.5).move_to(heading)
+            self.play(Create(heading_box), FadeIn(heading), FadeIn(page_mark), run_time=budget * 0.20)
         _, animations = self._visual()
-        self.play(LaggedStart(*animations, lag_ratio=0.12), run_time=budget * 0.62)
-        self.play(FadeIn(footer), run_time=budget * 0.08)
-        self.wait(max(0.01, self.scene_duration - budget * 0.94))
+        self.play(LaggedStart(*animations, lag_ratio=0.14), run_time=budget * 0.68)
+        self.wait(max(0.01, self.scene_duration - budget * 0.88))
 
     def _visual(self):
+        if self.spec.visual_kind == VisualKind.TITLE:
+            return self._hero()
         if self.spec.visual_kind == VisualKind.PH_SCALE:
             return self._ph_scale()
         if self.spec.visual_kind == VisualKind.COVALENT:
@@ -72,18 +81,28 @@ class AnimatedSlide(ManimScene):
             return self._comparison()
         return self._bullets()
 
+    def _hero(self):
+        title = _fit(Text(self.spec.heading, font_size=54, weight="BOLD", color=CYAN), 10.5).shift(UP * 0.55)
+        glow = title.copy().set_stroke(CYAN, width=14, opacity=0.22).set_fill(CYAN, opacity=0.08)
+        copy = VGroup(*[Text(line, font_size=23, color=MUTED) for line in _lines(self.spec.visual_text, 68)]).arrange(DOWN, buff=0.14).shift(DOWN * 0.75)
+        accent = Line(LEFT * 1.1, RIGHT * 1.1, color=GREEN, stroke_width=3).next_to(copy, DOWN, buff=0.42)
+        group = VGroup(glow, title, copy, accent)
+        return group, [FadeIn(glow), Write(title), FadeIn(copy, shift=UP * 0.2), Create(accent)]
+
     def _bullets(self):
         rows = VGroup()
         for line in _lines(self.spec.visual_text):
-            rows.add(VGroup(Dot(radius=0.08, color=YELLOW), _fit(Text(line, font_size=34, color=INK), 10.4)).arrange(RIGHT, buff=0.3))
-        rows.arrange(DOWN, aligned_edge=LEFT, buff=0.55).move_to(ORIGIN + DOWN * 0.15)
+            label = _fit(Text(line, font_size=28, color=INK), 9.6)
+            box = RoundedRectangle(width=label.width + 0.8, height=label.height + 0.48, corner_radius=0.08, color="#17383D", stroke_width=1.3)
+            rows.add(VGroup(box, label, Dot(box.get_left() + LEFT * 0.32, radius=0.07, color=GREEN)))
+        rows.arrange(DOWN, aligned_edge=LEFT, buff=0.34).move_to(ORIGIN + DOWN * 0.1)
         return rows, [FadeIn(row, shift=RIGHT * 0.35) for row in rows]
 
     def _ph_scale(self):
         colors = ["#E63946", "#EF6A3A", "#F49D37", "#F9C74F", "#90BE6D", "#43AA8B", "#2A9D8F", "#35B8C8", "#2994D1", "#3777C2", "#5262B8", "#674EA7", "#7A3E9D", "#923E91", "#A63D80"]
         cells = VGroup()
         for number, color in enumerate(colors):
-            box = RoundedRectangle(width=0.78, height=0.9, corner_radius=0.06, stroke_width=0, fill_color=color, fill_opacity=1)
+            box = RoundedRectangle(width=0.78, height=0.9, corner_radius=0.06, stroke_width=2, color=color, fill_color=color, fill_opacity=0.22)
             cells.add(VGroup(box, Text(str(number), font_size=20, weight="BOLD", color=WHITE)))
         cells.arrange(RIGHT, buff=0.035).shift(UP * 0.55)
         labels = VGroup(
@@ -96,30 +115,31 @@ class AnimatedSlide(ManimScene):
 
     @staticmethod
     def _atom(label: str, color: str, x: float):
-        circle = Circle(radius=0.83, color=WHITE, fill_color=color, fill_opacity=1).shift(RIGHT * x)
+        halo = Circle(radius=0.91, color=color, stroke_width=14, stroke_opacity=0.12).shift(RIGHT * x)
+        circle = Circle(radius=0.83, color=color, stroke_width=3, fill_color=BG, fill_opacity=1).shift(RIGHT * x)
         text = _fit(Text(label, font_size=34, weight="BOLD", color=WHITE), 1.2).move_to(circle)
-        return VGroup(circle, text)
+        return VGroup(halo, circle, text)
 
     def _caption(self):
         return VGroup(*[Text(line, font_size=24, color=INK) for line in _lines(self.spec.visual_text, 72)]).arrange(DOWN, buff=0.14).shift(DOWN * 1.65)
 
     def _covalent(self):
         left, right = self._atom("A", BLUE_D, -2.4), self._atom("B", "#7451A6", 2.4)
-        source = VGroup(Dot(LEFT * 1.35 + UP * 0.18, color=YELLOW), Dot(RIGHT * 1.35 + DOWN * 0.18, color=YELLOW))
-        shared = VGroup(Dot(LEFT * 0.18 + UP * 0.1, color=YELLOW), Dot(RIGHT * 0.18 + DOWN * 0.1, color=YELLOW))
+        source = VGroup(Dot(LEFT * 1.35 + UP * 0.18, color=GOLD), Dot(RIGHT * 1.35 + DOWN * 0.18, color=GOLD))
+        shared = VGroup(Dot(LEFT * 0.18 + UP * 0.1, color=GOLD), Dot(RIGHT * 0.18 + DOWN * 0.1, color=GOLD))
         bond, caption = Line(LEFT * 1.45, RIGHT * 1.45, color=CYAN, stroke_width=5), self._caption()
         return VGroup(left, right, source, bond, caption), [GrowFromCenter(left), GrowFromCenter(right), FadeIn(source), Transform(source, shared), Create(bond), FadeIn(caption, shift=UP * 0.2)]
 
     def _ionic(self):
         sodium, chlorine = self._atom("Na⁺", BLUE_D, -2.7), self._atom("Cl⁻", GREEN_D, 2.7)
-        electron, target = Dot(LEFT * 1.55, color=YELLOW), Dot(RIGHT * 1.55, color=YELLOW)
-        arrow, caption = Line(LEFT * 1.45, RIGHT * 1.45, color=YELLOW, stroke_width=5).add_tip(), self._caption()
+        electron, target = Dot(LEFT * 1.55, color=GOLD), Dot(RIGHT * 1.55, color=GOLD)
+        arrow, caption = Line(LEFT * 1.45, RIGHT * 1.45, color=GOLD, stroke_width=4).add_tip(), self._caption()
         return VGroup(sodium, chlorine, electron, arrow, caption), [GrowFromCenter(sodium), GrowFromCenter(chlorine), FadeIn(electron), Create(arrow), Transform(electron, target), FadeIn(caption, shift=UP * 0.2)]
 
     def _comparison(self):
         parts, cards = self.spec.visual_text.splitlines(), VGroup()
-        for title, color, body in (("IONIC", "#277DA1", parts[0] if parts else "Opposite ions attract"), ("COVALENT", "#7451A6", parts[1] if len(parts) > 1 else "Electrons are shared")):
-            card = RoundedRectangle(width=5.7, height=3.3, corner_radius=0.22, stroke_width=0, fill_color=color, fill_opacity=1)
+        for title, color, body in (("IONIC", CYAN, parts[0] if parts else "Opposite ions attract"), ("COVALENT", GREEN, parts[1] if len(parts) > 1 else "Electrons are shared")):
+            card = RoundedRectangle(width=5.7, height=3.3, corner_radius=0.22, color=color, stroke_width=2, fill_color=color, fill_opacity=0.06)
             heading = Text(title, font_size=30, weight="BOLD", color=WHITE).move_to(card.get_top() + DOWN * 0.5)
             copy = VGroup(*[Text(line, font_size=22, color=WHITE) for line in _lines(body, 28)]).arrange(DOWN, buff=0.15).move_to(card.get_center() + DOWN * 0.2)
             cards.add(VGroup(card, heading, copy))

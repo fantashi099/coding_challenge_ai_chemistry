@@ -10,3 +10,5 @@
 - Validation: the documented direct CLI command imports and runs successfully; Piper downloads its configured voice on first use.
 - Blocker: no `OPENROUTER_API_KEY` is available locally, so live LLM generation has not been exercised. The three required topics use validated curated fallbacks.
 - Next action: configure an OpenRouter key and review one dynamically scripted video before starting any service layer.
+- Decision: match the supplied XGBoost reference's visual language: black canvas, sparse type, cyan/green glow, outlined cards, animated nodes, and progressive reveals; omit its branding and content.
+- Next action: render and review a chemistry sample with the reference-inspired theme.
