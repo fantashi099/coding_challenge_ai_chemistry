@@ -51,3 +51,11 @@
 - Validation: all 21 tests pass, including event ordering, attempt numbers, detail limits, concurrent reuse, worker milestones, API lookup, and OpenAPI documentation; `git diff --check` passes.
 - Current blocker: none.
 - Next action: run the API and worker with `.env`, then inspect one real job's `/logs` response while it completes.
+
+## 2026-09-07
+
+- Finding: scene reveals consumed a fixed 68% of narration time, making complex visuals crawl; the title scene also subtracted an unplayed timing segment and clipped about 1.5 seconds of narration.
+- Implementation: capped visual reveals at six seconds, grouped the pH cells into one staged reveal, and padded each rendered scene by one frame so FFmpeg preserves the complete WAV.
+- Validation: all 21 tests pass; the reported pH job was re-rendered without new LLM/TTS calls as a 123.349-second H.264/AAC MP4, and its 19.367-second title visual fully covers the 19.365-second narration.
+- Current blocker: none.
+- Next action: review the updated pH artifact and tune the six-second reveal cap only if its perceived pace is still too slow or fast.

@@ -17,8 +17,10 @@ class CuratedPlanner:
 
 @pytest.mark.skipif(not shutil.which("ffmpeg") or not shutil.which("ffprobe"), reason="FFmpeg unavailable")
 def test_offline_render_produces_playable_audio_video(tmp_path):
+    question = "How does the pH scale work?"
+    plan = curated_plan(question)
     video = VideoGenerator(planner=CuratedPlanner(), narrator=ToneNarrator(0.5)).generate(
-        "How does the pH scale work?", tmp_path / "render"
+        question, tmp_path / "render"
     )
     probe = subprocess.run(
         ["ffprobe", "-v", "error", "-show_streams", "-show_format", "-of", "json", str(video)],
@@ -28,4 +30,4 @@ def test_offline_render_produces_playable_audio_video(tmp_path):
     )
     data = json.loads(probe.stdout)
     assert {stream["codec_type"] for stream in data["streams"]} == {"video", "audio"}
-    assert float(data["format"]["duration"]) > 1
+    assert float(data["format"]["duration"]) >= len(plan.scenes) * 0.5 - 0.01

@@ -56,17 +56,19 @@ class AnimatedSlide(ManimScene):
         page_box = RoundedRectangle(width=0.52, height=0.42, corner_radius=0.06, color="#17272B", fill_color="#061013", fill_opacity=1)
         page = Text(str(self.position[0]), font_size=13, color=MUTED).move_to(page_box)
         page_mark = VGroup(page_box, page).to_edge(DOWN, buff=0.3).to_edge(RIGHT, buff=0.35)
-        budget = max(0.2, self.scene_duration - 0.05)
+        target_duration = self.scene_duration + 1 / 30
+        intro_duration = min(1.0, target_duration * 0.12)
+        reveal_duration = min(6.0, target_duration * 0.45)
         self.add(ambient)
         if self.spec.visual_kind == VisualKind.TITLE:
-            self.play(FadeIn(page_mark), run_time=budget * 0.12)
+            self.play(FadeIn(page_mark), run_time=intro_duration)
         else:
             heading = _fit(Text(self.spec.heading.upper(), font_size=24, weight="BOLD", color=INK), 8.6).to_edge(UP, buff=0.55)
             heading_box = RoundedRectangle(width=heading.width + 0.48, height=heading.height + 0.32, corner_radius=0.08, color="#18363B", stroke_width=1.5).move_to(heading)
-            self.play(Create(heading_box), FadeIn(heading), FadeIn(page_mark), run_time=budget * 0.20)
+            self.play(Create(heading_box), FadeIn(heading), FadeIn(page_mark), run_time=intro_duration)
         _, animations = self._visual()
-        self.play(LaggedStart(*animations, lag_ratio=0.14), run_time=budget * 0.68)
-        self.wait(max(0.01, self.scene_duration - budget * 0.88))
+        self.play(LaggedStart(*animations, lag_ratio=0.14), run_time=reveal_duration)
+        self.wait(max(0.01, target_duration - intro_duration - reveal_duration))
 
     def _visual(self):
         if self.spec.visual_kind == VisualKind.TITLE:
@@ -111,7 +113,8 @@ class AnimatedSlide(ManimScene):
             Text("BASIC", font_size=22, weight="BOLD", color="#B9A8FF").move_to(RIGHT * 4.8 + DOWN * 0.25),
         )
         caption = VGroup(*[Text(line, font_size=25, color=INK) for line in _lines(self.spec.visual_text, 70)]).arrange(DOWN, buff=0.18).shift(DOWN * 1.35)
-        return VGroup(cells, labels, caption), [GrowFromCenter(cell) for cell in cells] + [FadeIn(labels), FadeIn(caption, shift=UP * 0.2)]
+        scale_reveal = LaggedStart(*(GrowFromCenter(cell) for cell in cells), lag_ratio=0.06)
+        return VGroup(cells, labels, caption), [scale_reveal, FadeIn(labels), FadeIn(caption, shift=UP * 0.2)]
 
     @staticmethod
     def _atom(label: str, color: str, x: float):
