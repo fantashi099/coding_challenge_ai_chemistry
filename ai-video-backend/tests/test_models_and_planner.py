@@ -36,10 +36,12 @@ def test_curated_plans_are_valid():
 
 def test_planner_retries_then_uses_curated_fallback():
     calls = 0
+    requests: list[httpx.Request] = []
 
     def invalid_response(request: httpx.Request) -> httpx.Response:
         nonlocal calls
         calls += 1
+        requests.append(request)
         return httpx.Response(200, json={"choices": [{"message": {"content": "{}"}}]})
 
     planner = OpenRouterPlanner(
@@ -48,6 +50,9 @@ def test_planner_retries_then_uses_curated_fallback():
     result = planner.create("How does the pH scale work?")
     assert calls == 2
     assert result.fallback_used is True
+    follow_up = json.loads(requests[1].content)["messages"][-1]
+    assert follow_up["role"] == "user"
+    assert "rejected" in follow_up["content"]
 
 
 def test_planner_rejects_unknown_question_after_retry():
@@ -68,6 +73,7 @@ def test_planner_accepts_structured_response():
         prompt = body["messages"][0]["content"]
         assert "cyan/green neon accents" in prompt
         assert "never use one kind more than twice" in prompt
+        assert "Never copy the kind another scene used" in prompt
         return httpx.Response(
             200,
             json={

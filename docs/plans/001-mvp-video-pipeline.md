@@ -12,6 +12,9 @@ Acceptance: 4–7 coherent scenes, 140–360 narration words, 1280×720 H.264/AA
 - Logarithmic rules and concepts without a dedicated diagram use `bullets`.
 - The XGBoost reference guides the black/neon visual language, not its branding or subject matter.
 
+- Every kind's definition carries an anti-pattern clause (a pH/ion/rules scene is never `covalent_sharing`), plus a worked kind sequence and a final self-count instruction.
+- On retry, the planner returns the schema error to the model instead of resampling the same low-temperature plan; `PLANNER_TIMEOUT_SECONDS` (default 120) is separately configurable because 60 seconds timed out live Qwen responses.
+
 ## Remaining verification
 
-Run one planner-only request with `qwen/qwen3.7-flash`, confirm it does not fall back and returns varied semantic visual kinds, then render and manually review the resulting MP4. If Qwen continues taking longer than the current 60-second response timeout, evaluate a faster model or a separately configurable planner timeout before changing the rendering pipeline.
+`scripts/check_prompt.py` performs one planner-only request (no retry, no fallback, no render) for fast prompt iteration. A single live check with the revised prompt passed validation with varied kinds (`title`, `ph_scale`, `bullets`, `ph_scale`, `bullets`, `recap`). Remaining: render the scripted video locally and confirm distinct animations per scene in the MP4, then repeat for the bond topics if desired.

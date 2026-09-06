@@ -27,7 +27,9 @@ class VideoGenerator:
     ):
         self.settings = settings or Settings()
         self.planner = planner or OpenRouterPlanner(
-            self.settings.openrouter_api_key, self.settings.openrouter_model
+            self.settings.openrouter_api_key,
+            self.settings.openrouter_model,
+            timeout=self.settings.planner_timeout_seconds,
         )
         self.narrator = narrator or PiperNarrator(
             self.settings.piper_model, self.settings.piper_data_dir
