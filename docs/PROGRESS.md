@@ -54,6 +54,7 @@
 
 ## 2026-09-07
 
+- Decision: increase the planner request timeout default from 120 to 300 seconds for slow Qwen responses; with two attempts, a job may now wait up to roughly ten minutes before fallback.
 - Decision: publish only the three accepted jobs' final MP4 files, not WAVs, intermediate clips, Manim caches, or machine-local concat manifests.
 - Validation: all three published samples contain H.264 video and AAC audio, play under `ffprobe`, and run 61.892–114.025 seconds; the root README links each question directly to its MP4.
 - Decision: prefer ElevenLabs River with `eleven_turbo_v2_5` when `ELEVENLABS_API_KEY` is configured; otherwise retain local Piper without changing entry points or the generation pipeline.

@@ -17,7 +17,7 @@ ENDPOINT = "https://openrouter.ai/api/v1/chat/completions"
 def main() -> None:
     parser = argparse.ArgumentParser(description="One planner-only request; no render, no retry, no fallback")
     parser.add_argument("--question", default="How does the pH scale work?")
-    parser.add_argument("--timeout", type=float, default=120)
+    parser.add_argument("--timeout", type=float, default=300)
     args = parser.parse_args()
 
     settings = Settings()

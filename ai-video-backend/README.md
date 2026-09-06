@@ -48,7 +48,7 @@ uv run python scripts/generate_video.py \
   --output artifacts/ph-scale
 ```
 
-To judge the planner prompt alone (one LLM call, no fallback, no render), use `uv run python scripts/check_prompt.py --question "..."`. Slow models may need `PLANNER_TIMEOUT_SECONDS=120` in `.env`.
+To judge the planner prompt alone (one LLM call, no fallback, no render), use `uv run python scripts/check_prompt.py --question "..."`. Planner requests default to a 300-second timeout, configurable with `PLANNER_TIMEOUT_SECONDS` in `.env`.
 
 The output contains the validated `plan.json`, scene animation and narration files, `metadata.json`, and the final `video.mp4`.
 

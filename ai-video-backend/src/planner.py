@@ -50,7 +50,7 @@ class PlanningResult:
 class OpenRouterPlanner:
     endpoint = "https://openrouter.ai/api/v1/chat/completions"
 
-    def __init__(self, api_key: str, model: str, client: httpx.Client | None = None, timeout: float = 60):
+    def __init__(self, api_key: str, model: str, client: httpx.Client | None = None, timeout: float = 300):
         self.api_key = api_key
         self.model = model
         self.client = client or httpx.Client(timeout=timeout)

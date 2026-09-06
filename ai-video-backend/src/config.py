@@ -8,7 +8,7 @@ class Settings(BaseSettings):
 
     openrouter_api_key: str = ""
     openrouter_model: str = "openai/gpt-4o-mini"
-    planner_timeout_seconds: float = 120
+    planner_timeout_seconds: float = 300
     elevenlabs_api_key: str = ""
     elevenlabs_voice_id: str = "SAz9YHcvj6GT2YYXdXww"
     elevenlabs_model: str = "eleven_turbo_v2_5"
