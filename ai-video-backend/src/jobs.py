@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import sqlite3
 import unicodedata
 import uuid
@@ -29,6 +31,19 @@ class Job:
         return asdict(self)
 
 
+@dataclass(frozen=True)
+class JobEvent:
+    id: int
+    job_id: str
+    event: str
+    attempt: int | None
+    detail: str | None
+    created_at: str
+
+    def as_dict(self) -> dict:
+        return asdict(self)
+
+
 class JobStore:
     def __init__(self, path: Path):
         self.path = path
@@ -51,12 +66,37 @@ class JobStore:
             self._migrate_question_keys(db)
             db.execute("CREATE INDEX IF NOT EXISTS jobs_queue ON jobs(status, created_at)")
             db.execute("CREATE UNIQUE INDEX IF NOT EXISTS jobs_question_key ON jobs(question_key)")
-            db.execute("PRAGMA user_version=2")
+            db.execute(
+                """CREATE TABLE IF NOT EXISTS job_events (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    job_id TEXT NOT NULL REFERENCES jobs(id),
+                    event TEXT NOT NULL,
+                    attempt INTEGER,
+                    detail TEXT,
+                    created_at TEXT NOT NULL
+                )"""
+            )
+            db.execute("CREATE INDEX IF NOT EXISTS job_events_job ON job_events(job_id, id)")
+            db.execute("PRAGMA user_version=3")
 
     def _connect(self) -> sqlite3.Connection:
         db = sqlite3.connect(self.path, timeout=10, isolation_level=None)
         db.row_factory = sqlite3.Row
+        db.execute("PRAGMA foreign_keys=ON")
         return db
+
+    @staticmethod
+    def _event(
+        db: sqlite3.Connection,
+        job_id: str,
+        event: str,
+        attempt: int | None = None,
+        detail: str | None = None,
+    ) -> None:
+        db.execute(
+            "INSERT INTO job_events (job_id, event, attempt, detail, created_at) VALUES (?, ?, ?, ?, ?)",
+            (job_id, event, attempt, detail[:1000] if detail else None, _now()),
+        )
 
     @staticmethod
     def _job(row: sqlite3.Row | None) -> Job | None:
@@ -89,6 +129,7 @@ class JobStore:
                 (key,),
             ).fetchone()
             if existing:
+                self._event(db, existing["id"], "reused", existing["attempts"])
                 db.commit()
                 return Job(**dict(existing)), False
             db.execute(
@@ -97,6 +138,7 @@ class JobStore:
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (job.id, job.question, key, job.status, job.attempts, job.created_at, job.updated_at, None, None),
             )
+            self._event(db, job.id, "queued", 0)
             db.commit()
         return job, True
 
@@ -113,6 +155,27 @@ class JobStore:
                 "SELECT id, question, status, attempts, created_at, updated_at, artifact_path, error FROM jobs ORDER BY created_at DESC"
             ).fetchall()
         return [Job(**dict(row)) for row in rows]
+
+    def events(self, job_id: str) -> list[JobEvent]:
+        if not self.get(job_id):
+            raise KeyError(job_id)
+        with self._connect() as db:
+            rows = db.execute(
+                "SELECT id, job_id, event, attempt, detail, created_at FROM job_events WHERE job_id = ? ORDER BY id",
+                (job_id,),
+            ).fetchall()
+        return [JobEvent(**dict(row)) for row in rows]
+
+    def record_event(
+        self, job_id: str, event: str, attempt: int | None = None, detail: str | None = None
+    ) -> None:
+        with self._connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            if not db.execute("SELECT 1 FROM jobs WHERE id = ?", (job_id,)).fetchone():
+                db.rollback()
+                raise KeyError(job_id)
+            self._event(db, job_id, event, attempt, detail)
+            db.commit()
 
     def claim(self) -> Job | None:
         with self._connect() as db:
@@ -131,6 +194,7 @@ class JobStore:
                 "SELECT id, question, status, attempts, created_at, updated_at, artifact_path, error FROM jobs WHERE id = ?",
                 (row["id"],),
             ).fetchone())
+            self._event(db, row["id"], "running", job.attempts)
             db.commit()
             return job
 
@@ -145,6 +209,8 @@ class JobStore:
 
     def recover_running(self) -> int:
         with self._connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            running = db.execute("SELECT id, attempts FROM jobs WHERE status = 'running'").fetchall()
             retry = db.execute(
                 "UPDATE jobs SET status = 'queued', updated_at = ?, error = 'worker interrupted; retrying' WHERE status = 'running' AND attempts < 2",
                 (_now(),),
@@ -153,15 +219,26 @@ class JobStore:
                 "UPDATE jobs SET status = 'failed', updated_at = ?, error = 'worker interrupted during final attempt' WHERE status = 'running'",
                 (_now(),),
             ).rowcount
+            for row in running:
+                event = "recovered" if row["attempts"] < 2 else "failed"
+                detail = "worker interrupted; retrying" if event == "recovered" else "worker interrupted during final attempt"
+                self._event(db, row["id"], event, row["attempts"], detail)
+            db.commit()
         return retry + failed
 
     def _transition(
         self, job_id: str, status: str, artifact_path: str | None = None, error: str | None = None
     ) -> None:
         with self._connect() as db:
+            db.execute("BEGIN IMMEDIATE")
             changed = db.execute(
                 "UPDATE jobs SET status = ?, updated_at = ?, artifact_path = ?, error = ? WHERE id = ? AND status = 'running'",
                 (status, _now(), artifact_path, error, job_id),
             ).rowcount
+            if changed == 1:
+                event = "retry_scheduled" if status == "queued" else status
+                job = db.execute("SELECT attempts FROM jobs WHERE id = ?", (job_id,)).fetchone()
+                self._event(db, job_id, event, job["attempts"], error)
+            db.commit()
         if changed != 1:
             raise ValueError("invalid job transition")

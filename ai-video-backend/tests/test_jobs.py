@@ -23,6 +23,10 @@ def test_create_list_atomic_claim_and_transitions(tmp_path):
     assert store.get(first.id).status == "failed"
     with pytest.raises(ValueError, match="invalid job transition"):
         store.complete(first.id, tmp_path / "video.mp4")
+    assert [event.event for event in store.events(first.id)] == [
+        "queued", "running", "retry_scheduled", "running", "failed"
+    ]
+    assert [event.attempt for event in store.events(first.id)] == [0, 1, 1, 2, 2]
 
 
 def test_completion_and_recovery_respect_two_attempt_limit(tmp_path):
@@ -47,6 +51,8 @@ def test_completion_and_recovery_respect_two_attempt_limit(tmp_path):
     artifact = tmp_path / "published.mp4"
     complete_store.complete(completed.id, artifact)
     assert complete_store.get(completed.id).artifact_path == str(artifact)
+    assert [event.event for event in retry_store.events(retry.id)] == ["queued", "running", "recovered"]
+    assert [event.event for event in complete_store.events(completed.id)] == ["queued", "running", "completed"]
 
 
 def test_normalized_question_is_deduplicated_concurrently(tmp_path):
@@ -60,6 +66,17 @@ def test_normalized_question_is_deduplicated_concurrently(tmp_path):
     assert results[0][0].id == results[1][0].id
     assert sorted(created for _, created in results) == [False, True]
     assert len(store.list()) == 1
+    events = store.events(results[0][0].id)
+    assert [event.event for event in events] == ["queued", "reused"]
+
+
+def test_event_details_are_capped_and_unknown_jobs_fail(tmp_path):
+    store = JobStore(tmp_path / "jobs.sqlite3")
+    job = store.create("question")
+    store.record_event(job.id, "note", detail="x" * 1001)
+    assert len(store.events(job.id)[-1].detail) == 1000
+    with pytest.raises(KeyError):
+        store.events("missing")
 
 
 def test_legacy_schema_migration_retains_duplicate_rows(tmp_path):

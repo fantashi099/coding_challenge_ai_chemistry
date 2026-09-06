@@ -7,7 +7,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from .config import Settings
-from .jobs import Job, JobStore
+from .jobs import Job, JobEvent, JobStore
 
 
 class VideoRequest(BaseModel):
@@ -32,6 +32,15 @@ class JobResponse(BaseModel):
 
 class CreateVideoResponse(JobResponse):
     reused: bool
+
+
+class JobEventResponse(BaseModel):
+    id: int
+    job_id: str
+    event: str
+    attempt: int | None
+    detail: str | None
+    created_at: str
 
 
 def create_app(settings: Settings | None = None, store: JobStore | None = None) -> FastAPI:
@@ -83,6 +92,19 @@ def create_app(settings: Settings | None = None, store: JobStore | None = None) 
         if not job:
             raise HTTPException(404, "video job not found")
         return public(job)
+
+    @app.get(
+        "/videos/{job_id}/logs",
+        response_model=list[JobEventResponse],
+        tags=["videos"],
+        summary="List a video job's run log",
+        responses={404: {"description": "Job not found"}},
+    )
+    async def get_video_logs(job_id: str) -> list[JobEvent]:
+        try:
+            return jobs.events(job_id)
+        except KeyError:
+            raise HTTPException(404, "video job not found") from None
 
     @app.get(
         "/videos/{job_id}/artifact",

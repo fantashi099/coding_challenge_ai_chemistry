@@ -43,6 +43,10 @@ def test_worker_publishes_only_completed_video(tmp_path):
     assert completed.status == "completed"
     assert Path(completed.artifact_path).read_bytes() == b"chemistry question"
     assert not (root / job.id / "work" / "video.mp4").exists()
+    assert [event.event for event in store.events(job.id)] == [
+        "queued", "running", "generation_started", "generation_finished",
+        "artifact_published", "completed",
+    ]
     assert run_once(store, SuccessfulGenerator(), root) is False
 
 
@@ -71,3 +75,4 @@ def test_worker_promotes_plan_only_after_successful_render(tmp_path):
     assert learned.source_model == "test-model"
     metadata = json.loads((root / job.id / "work" / "metadata.json").read_text())
     assert metadata["fallback_source"] == "none"
+    assert "fallback_promoted" in [event.event for event in store.events(job.id)]

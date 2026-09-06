@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 def _record_fallback(
     generator: VideoGenerator, fallbacks: LearnedFallbackStore, question: str, work_dir: Path
-) -> None:
+) -> str:
     metadata_path = work_dir / "metadata.json"
     metadata = json.loads(metadata_path.read_text())
     source = getattr(getattr(generator, "planner", None), "last_source", "none")
@@ -27,6 +27,7 @@ def _record_fallback(
     if source == "none":
         plan = VideoPlan.model_validate_json((work_dir / "plan.json").read_text())
         fallbacks.save(question, plan, metadata["model"])
+    return source
 
 
 def run_once(
@@ -40,14 +41,24 @@ def run_once(
         return False
     work_dir = artifact_root / job.id / "work"
     try:
+        store.record_event(job.id, "generation_started", job.attempts)
         generated = generator.generate(job.question, work_dir)
+        store.record_event(job.id, "generation_finished", job.attempts)
         final = artifact_root / job.id / "video.mp4"
         final.parent.mkdir(parents=True, exist_ok=True)
         os.replace(generated, final)
+        store.record_event(job.id, "artifact_published", job.attempts)
         if fallbacks:
             try:
-                _record_fallback(generator, fallbacks, job.question, work_dir)
-            except Exception:
+                if _record_fallback(generator, fallbacks, job.question, work_dir) == "none":
+                    store.record_event(job.id, "fallback_promoted", job.attempts)
+            except Exception as exc:
+                store.record_event(
+                    job.id,
+                    "fallback_promotion_failed",
+                    job.attempts,
+                    f"{type(exc).__name__}: {exc}",
+                )
                 logger.exception("could not record fallback metadata for job %s", job.id)
         store.complete(job.id, final.resolve())
         logger.info("completed video job %s", job.id)

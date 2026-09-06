@@ -20,6 +20,9 @@ def test_video_api_lifecycle_and_artifact(tmp_path):
             assert duplicate.status_code == 202
             assert duplicate.json()["id"] == job_id
             assert duplicate.json()["reused"] is True
+            logs = (await client.get(f"/videos/{job_id}/logs")).json()
+            assert [event["event"] for event in logs] == ["queued", "reused"]
+            assert (await client.get("/videos/missing/logs")).status_code == 404
             assert (await client.get(f"/videos/{job_id}/artifact")).status_code == 409
             assert (await client.get("/videos/missing")).status_code == 404
             assert (await client.get("/videos/missing/artifact")).status_code == 404
@@ -48,8 +51,11 @@ def test_swagger_and_openapi_document_public_contract(tmp_path):
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             assert (await client.get("/docs")).status_code == 200
             schema = (await client.get("/openapi.json")).json()
-            assert set(schema["paths"]) >= {"/videos", "/videos/{job_id}", "/videos/{job_id}/artifact"}
+            assert set(schema["paths"]) >= {
+                "/videos", "/videos/{job_id}", "/videos/{job_id}/artifact", "/videos/{job_id}/logs"
+            }
             assert "CreateVideoResponse" in schema["components"]["schemas"]
+            assert "JobEventResponse" in schema["components"]["schemas"]
             assert set(schema["paths"]["/videos"]["post"]["responses"]) >= {"200", "202", "422"}
 
     asyncio.run(exercise())

@@ -1,6 +1,6 @@
 # 003 — Durable job run log
 
-Status: planned on 2026-09-06.
+Status: implemented and verified on 2026-09-06.
 
 ## Goal
 
