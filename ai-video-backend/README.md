@@ -1,6 +1,6 @@
-# AI Chemistry Video Service
+# AI Chemistry Video Generator
 
-A small FastAPI service that queues reliable, narrated 1–3 minute chemistry explainers with animated Manim visuals. Every topic is scripted by OpenRouter when configured; validated curated scripts are reliability fallbacks only for the three required questions.
+A runnable CLI that turns a chemistry topic into a narrated 1–3 minute video with animated Manim visuals. OpenRouter writes the script and visual plan; validated curated scripts are reliability fallbacks only for the three required questions.
 
 ## Setup
 
@@ -11,28 +11,9 @@ uv sync
 cp .env.example .env
 ```
 
-Piper downloads the configured voice on first generation. Set `OPENROUTER_API_KEY` to generate plans for questions outside the curated scope.
+Set `OPENROUTER_API_KEY` in `.env`; Piper downloads the configured voice on first generation. Without an API key, only the three required topics can run through their curated fallbacks.
 
 ## Run
-
-```bash
-# terminal 1
-uv run uvicorn src.api:app --reload
-
-# terminal 2
-uv run python -m src.workers.video_worker
-```
-
-```bash
-curl -X POST http://127.0.0.1:8000/videos \
-  -H 'content-type: application/json' \
-  -d '{"question":"How does the pH scale work?"}'
-curl http://127.0.0.1:8000/videos
-```
-
-Open `/docs` for the interactive API. Completed records include an `artifact_url`.
-
-The same generation path is available directly:
 
 ```bash
 uv run python scripts/generate_video.py \
@@ -40,12 +21,14 @@ uv run python scripts/generate_video.py \
   --output artifacts/ph-scale
 ```
 
+The output contains the validated `plan.json`, scene animation and narration files, `metadata.json`, and the final `video.mp4`.
+
 ## Test
 
 ```bash
 uv run pytest
 ```
 
-The test suite covers plan validation and retry/fallback behavior, atomic claims and all job transitions, API lifecycle responses, and an offline FFmpeg audio/video smoke render.
+The test suite covers plan validation, OpenRouter retry/fallback behavior, and an offline Manim/FFmpeg audio-video smoke render.
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for boundaries and tradeoffs. Sample inputs are recorded in [artifacts/samples/questions.json](artifacts/samples/questions.json).
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the pipeline boundaries.
