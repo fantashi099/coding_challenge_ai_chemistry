@@ -25,7 +25,7 @@ uv run uvicorn src.api:app --reload
 uv run python -m src.workers.video_worker
 ```
 
-The API uses `data/jobs.sqlite3`, stores job artifacts under `artifacts/jobs`, and exposes Swagger UI at `http://127.0.0.1:8000/docs` (`/openapi.json` and `/redoc` are also available). These paths can be changed with `DATABASE_PATH`, `ARTIFACT_ROOT`, and `WORKER_POLL_SECONDS`.
+The API uses `data/jobs.sqlite3`, stores job artifacts under `artifacts/jobs`, and exposes Swagger UI at `http://127.0.0.1:8000/docs` (`/openapi.json` and `/redoc` are also available). Durable job run logs are stored in the SQLite `job_events` table; worker operational logs print to its terminal. These paths can be changed with `DATABASE_PATH`, `ARTIFACT_ROOT`, and `WORKER_POLL_SECONDS`.
 
 Normalized-identical questions reuse one job and completed artifact, so they do not spend LLM or rendering resources twice. After a new topic renders successfully, its validated LLM plan is saved as a learned fallback. Recovery order is live LLM, learned fallback, then the three hand-curated fallbacks.
 
@@ -36,6 +36,7 @@ curl -X POST http://127.0.0.1:8000/videos \
 
 curl http://127.0.0.1:8000/videos
 curl http://127.0.0.1:8000/videos/JOB_ID
+curl http://127.0.0.1:8000/videos/JOB_ID/logs
 curl -OJ http://127.0.0.1:8000/videos/JOB_ID/artifact
 ```
 

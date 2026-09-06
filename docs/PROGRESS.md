@@ -54,6 +54,7 @@
 
 ## 2026-09-07
 
+- Documentation: added the durable job-log storage location and `GET /videos/{id}/logs` example to the backend README.
 - Finding: scene reveals consumed a fixed 68% of narration time, making complex visuals crawl; the title scene also subtracted an unplayed timing segment and clipped about 1.5 seconds of narration.
 - Implementation: capped visual reveals at six seconds, grouped the pH cells into one staged reveal, and padded each rendered scene by one frame so FFmpeg preserves the complete WAV.
 - Validation: all 21 tests pass; the reported pH job was re-rendered without new LLM/TTS calls as a 123.349-second H.264/AAC MP4, and its 19.367-second title visual fully covers the 19.365-second narration.
