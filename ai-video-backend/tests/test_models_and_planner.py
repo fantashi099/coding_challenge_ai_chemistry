@@ -79,13 +79,14 @@ def test_planner_accepts_structured_response():
     def success(request: httpx.Request) -> httpx.Response:
         body = json.loads(request.content)
         assert body["response_format"]["json_schema"]["strict"] is True
-        assert body["provider"] == {"require_parameters": True}
+        assert "provider" not in body
         assert body["reasoning"] == {"max_tokens": 1000}
         assert body["max_tokens"] == 2500
+        assert body["temperature"] == 0.0
         prompt = body["messages"][0]["content"]
         assert "cyan/green neon accents" in prompt
         assert "never use one kind more than twice" in prompt
-        assert "Never copy the kind another scene used" in prompt
+        assert "first narration sentence" in prompt
         return httpx.Response(
             200,
             json={
@@ -114,6 +115,70 @@ def test_planner_accepts_structured_content_object():
         "key", "test-model", httpx.Client(transport=httpx.MockTransport(success))
     ).create("question")
     assert result.plan == plan
+
+
+def test_planner_repairs_deterministic_endpoint_visual_kinds():
+    expected = next(iter(CURATED_PLANS.values()))
+    returned = expected.model_dump()
+    returned["scenes"][0]["visual_kind"] = "bullets"
+    returned["scenes"][-1]["visual_kind"] = "bullets"
+
+    def response(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"choices": [{"message": {"content": returned}}]})
+
+    result = OpenRouterPlanner(
+        "key", "test-model", httpx.Client(transport=httpx.MockTransport(response))
+    ).create("question")
+    assert result.plan == expected
+    assert len(result.attempts) == 1
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        "How does the pH scale work?",
+        "Why do atoms form covalent bonds?",
+        "What is the difference between ionic and covalent bonding?",
+    ],
+)
+def test_required_questions_are_grounded_with_exact_question_and_curated_baseline(question):
+    baseline = CURATED_PLANS[question.casefold()]
+    returned = baseline.model_dump()
+    returned["scenes"][0]["narration"] = f"{question} {returned['scenes'][0]['narration']}"
+
+    def response(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        user_prompt = body["messages"][1]["content"]
+        assert f"sentence:\n{question}" in user_prompt
+        assert baseline.model_dump_json(indent=2) in user_prompt
+        return httpx.Response(
+            200, json={"choices": [{"message": {"content": returned}}]}
+        )
+
+    result = OpenRouterPlanner(
+        "key", "test-model", httpx.Client(transport=httpx.MockTransport(response))
+    ).create(question)
+    assert result.fallback_used is False
+
+
+def test_planner_retries_a_paraphrased_opening_question():
+    question = "How does the pH scale work?"
+    plan = CURATED_PLANS[question.casefold()].model_dump()
+    corrected = CURATED_PLANS[question.casefold()].model_dump()
+    corrected["scenes"][0]["narration"] = f"{question} {corrected['scenes'][0]['narration']}"
+    replies = [plan, corrected]
+    requests = []
+
+    def response(request: httpx.Request) -> httpx.Response:
+        requests.append(json.loads(request.content))
+        return httpx.Response(200, json={"choices": [{"message": {"content": replies.pop(0)}}]})
+
+    result = OpenRouterPlanner(
+        "key", "test-model", httpx.Client(transport=httpx.MockTransport(response))
+    ).create(question)
+    assert len(result.attempts) == 2
+    assert result.attempts[0].detail == f'first narration must begin exactly with: "{question}"'
+    assert question in requests[1]["messages"][-1]["content"]
 
 
 def test_transient_error_does_not_consume_validation_retry(monkeypatch):

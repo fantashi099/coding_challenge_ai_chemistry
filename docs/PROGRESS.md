@@ -54,6 +54,18 @@
 
 ## 2026-09-07
 
+- Finding: the three non-fallback Qwen plans paraphrased the opening question, dropped curated qualifications, introduced anthropomorphic or misleading chemistry language, and sometimes selected unrelated renderers solely to increase visual-kind diversity.
+- Decision: version the production prompt as Chemistry Planner v2, use the validated curated plan as a minimum factual baseline for each required question, set production temperature to 0.0, and reject any required-topic plan whose first narration sentence does not copy the question exactly.
+- Validation: all three required prompts passed live against `qwen/qwen3.7-flash` with `fallback_used: false`; each exact question opened its narration, baseline concepts and caveats were retained, and visual kinds matched scene content. All 32 automated tests and the render smoke test pass; `git diff --check` passes.
+- Next action: restart the worker and generate fresh artifacts; completed jobs remain immutable and will otherwise be reused by question deduplication.
+- Finding: job `8ed8fb33-2993-443e-ab8a-63c5bc594fec` reached Qwen successfully twice but fell back because both responses mislabeled the deterministic first/final scene visual kinds.
+- Fix: normalize the first `visual_kind` to `title` and the final one to `recap` before validating the remaining LLM plan, avoiding retries for positional labels the application already mandates.
+- Validation: all 28 tests pass; a live Qwen3.7 Flash pH request then succeeded on attempt one with HTTP 200 and `fallback_used: false`; `git diff --check` passes.
+- Next action: restart the worker; completed job metadata remains historical, while new jobs use the repaired planner.
+- Fix: stop requiring native support for every OpenRouter parameter. Qwen3.7 Flash supports JSON output but not JSON-schema enforcement, so `require_parameters: true` excluded its only provider and caused HTTP 404; local `VideoPlan` validation continues to enforce the schema.
+- Validation: all 27 tests pass, including a planner request regression assertion that no incompatible provider filter is sent; `git diff --check` passes. A live Qwen3.7 Flash probe reached OpenRouter, received HTTP 200, corrected one invalid plan on retry, and completed with `fallback_used: false`.
+- Current blocker: restart the worker before retrying affected jobs so it loads the corrected request configuration; historical metadata remains unchanged.
+- Next action: restart the worker so new jobs use the fix; completed job `db98736e-0776-4767-997b-6d7fe107a1e0` remains an immutable record of its fallback run.
 - Fix: accept OpenRouter structured content as either a JSON string or decoded object, require providers that support request parameters, cap Qwen reasoning at 1,000 tokens and total output at 2,500, and retry transient 429/502/503/504 responses with bounded `Retry-After` backoff.
 - Validation: all 27 tests pass, including decoded structured objects and a validation failure followed by a transient provider error and successful third attempt.
 - Current blocker: live OpenRouter behavior has not been exercised by this change; existing jobs and metadata are unchanged.

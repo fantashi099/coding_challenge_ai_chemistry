@@ -1,5 +1,7 @@
+import json
 import time
 from dataclasses import asdict, dataclass
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -8,31 +10,7 @@ from pydantic import ValidationError
 from .curated import curated_plan
 from .models import VideoPlan
 
-SYSTEM_PROMPT = """Create an accurate 4–7 scene high-school chemistry explainer.
-
-SCRIPT
-- Open with the core question, teach one idea per scene, and end with a recap.
-- Write natural spoken narration totaling 140–360 words.
-- Keep visual_text short and diagram-friendly. Never copy narration onto the screen.
-- Use concept headings such as "Reading the scale"; never write "Scene 2" or similar labels.
-
-VISUAL PLAN — these rules are mandatory
-- Choose each scene's visual_kind from that scene's own content alone. Never copy the kind another scene used.
-- Scene 1: title. Final scene: recap.
-- Use at least 3 distinct visual kinds, and never use one kind more than twice.
-- ph_scale: a pH number line, an acidity/basicity range, or real samples positioned on the scale.
-- covalent_sharing: only electron-pair sharing or covalent bonds. A scene about ions, pH, or general rules is never covalent_sharing.
-- ionic_transfer: only electron transfer and charged ions.
-- bond_comparison: only side-by-side ionic/covalent contrasts.
-- bullets: short rules, formulas, or explanations, including a logarithmic tenfold-change rule.
-- Example plan for "How does the pH scale work?": title, ph_scale, bullets, ph_scale, recap.
-- Every scene must advance a different visual idea. Do not repeat one animation with new text.
-- Before answering, count your kinds and fix the plan if any kind appears more than twice.
-
-STYLE
-Design for Manim as a cinematic technical explainer: pure black canvas, sparse white type,
-cyan/green neon accents, thin glowing outlines, animated nodes and paths, progressive reveals,
-and generous empty space. Do not request photos, logos, branding, or unsupported effects."""
+SYSTEM_PROMPT = (Path(__file__).resolve().parents[1] / "prompts/chemistry_planner_v2.md").read_text()
 
 
 @dataclass(frozen=True)
@@ -53,6 +31,10 @@ class PlanningError(RuntimeError):
     def __init__(self, message: str, attempts: tuple[PlannerAttempt, ...] = ()):
         super().__init__(message)
         self.attempts = attempts
+
+
+class PlanQualityError(ValueError):
+    pass
 
 
 @dataclass(frozen=True)
@@ -90,6 +72,8 @@ def _failure(
             f"{'.'.join(map(str, error['loc'])) or 'plan'}: {error['msg']}" for error in errors
         )
         outcome = "validation_failed"
+    elif isinstance(exc, PlanQualityError):
+        outcome, detail = "validation_failed", str(exc)
     elif isinstance(exc, (KeyError, TypeError, ValueError)):
         outcome, detail = "invalid_response", "OpenRouter response lacked valid structured content"
     else:
@@ -124,9 +108,16 @@ class OpenRouterPlanner:
     def create(self, question: str) -> PlanningResult:
         attempts: list[PlannerAttempt] = []
         if self.api_key:
+            baseline = curated_plan(question)
+            user_prompt = f"QUESTION — copy this exact text as the first narration sentence:\n{question}"
+            if baseline:
+                user_prompt += (
+                    "\n\nMINIMUM CONTENT BASELINE — retain every substantive point and qualification:\n"
+                    + baseline.model_dump_json(indent=2)
+                )
             messages: list[dict[str, str]] = [
                 {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": question},
+                {"role": "user", "content": user_prompt},
             ]
             plan_failures = 0
             for attempt in range(1, 4):
@@ -137,10 +128,9 @@ class OpenRouterPlanner:
                         headers={"Authorization": f"Bearer {self.api_key}"},
                         json={
                             "model": self.model,
-                            "temperature": 0.2,
+                            "temperature": 0.0,
                             "max_tokens": 2500,
                             "reasoning": {"max_tokens": 1000},
-                            "provider": {"require_parameters": True},
                             "messages": messages,
                             "response_format": {
                                 "type": "json_schema",
@@ -155,11 +145,16 @@ class OpenRouterPlanner:
                     response.raise_for_status()
                     payload = response.json()
                     content = payload["choices"][0]["message"]["content"]
-                    plan = (
-                        VideoPlan.model_validate_json(content)
-                        if isinstance(content, (str, bytes, bytearray))
-                        else VideoPlan.model_validate(content)
-                    )
+                    if isinstance(content, (str, bytes, bytearray)):
+                        content = json.loads(content)
+                    if isinstance(content, dict) and content.get("scenes"):
+                        content["scenes"][0]["visual_kind"] = "title"
+                        content["scenes"][-1]["visual_kind"] = "recap"
+                    plan = VideoPlan.model_validate(content)
+                    if baseline and not plan.scenes[0].narration.startswith(question):
+                        raise PlanQualityError(
+                            f'first narration must begin exactly with: "{question}"'
+                        )
                     usage = _usage(payload)
                     attempts.append(
                         PlannerAttempt(
