@@ -106,6 +106,13 @@ def _failure(
     )
 
 
+def _retry_delay(response: httpx.Response | None) -> float:
+    try:
+        return min(max(float(response.headers.get("retry-after", 1)), 0), 30) if response else 1
+    except ValueError:
+        return 1
+
+
 class OpenRouterPlanner:
     endpoint = "https://openrouter.ai/api/v1/chat/completions"
 
@@ -121,7 +128,8 @@ class OpenRouterPlanner:
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": question},
             ]
-            for attempt in range(1, 3):
+            plan_failures = 0
+            for attempt in range(1, 4):
                 started, payload, response = time.monotonic(), None, None
                 try:
                     response = self.client.post(
@@ -130,6 +138,9 @@ class OpenRouterPlanner:
                         json={
                             "model": self.model,
                             "temperature": 0.2,
+                            "max_tokens": 2500,
+                            "reasoning": {"max_tokens": 1000},
+                            "provider": {"require_parameters": True},
                             "messages": messages,
                             "response_format": {
                                 "type": "json_schema",
@@ -143,7 +154,12 @@ class OpenRouterPlanner:
                     )
                     response.raise_for_status()
                     payload = response.json()
-                    plan = VideoPlan.model_validate_json(payload["choices"][0]["message"]["content"])
+                    content = payload["choices"][0]["message"]["content"]
+                    plan = (
+                        VideoPlan.model_validate_json(content)
+                        if isinstance(content, (str, bytes, bytearray))
+                        else VideoPlan.model_validate(content)
+                    )
                     usage = _usage(payload)
                     attempts.append(
                         PlannerAttempt(
@@ -159,16 +175,24 @@ class OpenRouterPlanner:
                         plan, self.model, usage, usage.get("cost"), False, tuple(attempts)
                     )
                 except (httpx.HTTPError, KeyError, TypeError, ValueError, ValidationError) as exc:
-                    attempts.append(_failure(attempt, started, exc, payload, response))
-                    messages.append(
-                        {
-                            "role": "user",
-                            "content": f"Your previous plan was rejected: {exc}. Fix every violation and return a complete corrected plan.",
-                        }
-                    )
+                    failure = _failure(attempt, started, exc, payload, response)
+                    attempts.append(failure)
+                    if failure.http_status in {429, 502, 503, 504} and attempt < 3:
+                        time.sleep(_retry_delay(response))
+                        continue
+                    plan_failures += 1
+                    if plan_failures >= 2 or attempt == 3:
+                        break
+                    if failure.outcome in {"validation_failed", "invalid_response"}:
+                        messages.append(
+                            {
+                                "role": "user",
+                                "content": f"Your previous plan was rejected: {failure.detail}. Fix every violation and return a complete corrected plan.",
+                            }
+                        )
 
         fallback = curated_plan(question)
         if fallback:
             return PlanningResult(fallback, self.model, {}, None, True, tuple(attempts))
-        reason = "OPENROUTER_API_KEY is not configured" if not self.api_key else "2 attempts failed"
+        reason = "OPENROUTER_API_KEY is not configured" if not self.api_key else f"{len(attempts)} attempts failed"
         raise PlanningError(f"Could not create a valid plan: {reason}", tuple(attempts))

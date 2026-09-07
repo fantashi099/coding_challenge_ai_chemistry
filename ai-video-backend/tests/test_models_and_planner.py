@@ -60,14 +60,16 @@ def test_planner_retries_then_uses_curated_fallback():
     assert "rejected" in follow_up["content"]
 
 
-def test_planner_rejects_unknown_question_after_retry():
+def test_planner_rejects_unknown_question_after_transient_retries(monkeypatch):
+    monkeypatch.setattr("src.planner.time.sleep", lambda _: None)
+
     def failure(request: httpx.Request) -> httpx.Response:
         return httpx.Response(503, text="raw provider response must not be persisted")
 
     planner = OpenRouterPlanner("key", "test-model", httpx.Client(transport=httpx.MockTransport(failure)))
-    with pytest.raises(PlanningError, match="2 attempts failed") as raised:
+    with pytest.raises(PlanningError, match="3 attempts failed") as raised:
         planner.create("Explain an unknown chemistry topic")
-    assert [attempt.http_status for attempt in raised.value.attempts] == [503, 503]
+    assert [attempt.http_status for attempt in raised.value.attempts] == [503, 503, 503]
     assert all(attempt.detail == "OpenRouter returned HTTP 503" for attempt in raised.value.attempts)
 
 
@@ -77,6 +79,9 @@ def test_planner_accepts_structured_response():
     def success(request: httpx.Request) -> httpx.Response:
         body = json.loads(request.content)
         assert body["response_format"]["json_schema"]["strict"] is True
+        assert body["provider"] == {"require_parameters": True}
+        assert body["reasoning"] == {"max_tokens": 1000}
+        assert body["max_tokens"] == 2500
         prompt = body["messages"][0]["content"]
         assert "cyan/green neon accents" in prompt
         assert "never use one kind more than twice" in prompt
@@ -97,3 +102,37 @@ def test_planner_accepts_structured_response():
     assert result.fallback_used is False
     assert result.attempts[0].outcome == "succeeded"
     assert result.attempts[0].usage == {"prompt_tokens": 10, "completion_tokens": 20, "cost": 0.001}
+
+
+def test_planner_accepts_structured_content_object():
+    plan = next(iter(CURATED_PLANS.values()))
+
+    def success(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"choices": [{"message": {"content": plan.model_dump()}}]})
+
+    result = OpenRouterPlanner(
+        "key", "test-model", httpx.Client(transport=httpx.MockTransport(success))
+    ).create("question")
+    assert result.plan == plan
+
+
+def test_transient_error_does_not_consume_validation_retry(monkeypatch):
+    plan = next(iter(CURATED_PLANS.values()))
+    replies = [
+        httpx.Response(200, json={"choices": [{"message": {"content": {}}}]}),
+        httpx.Response(429, headers={"retry-after": "0"}),
+        httpx.Response(200, json={"choices": [{"message": {"content": plan.model_dump()}}]}),
+    ]
+    delays = []
+    monkeypatch.setattr("src.planner.time.sleep", delays.append)
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        return replies.pop(0)
+
+    result = OpenRouterPlanner(
+        "key", "test-model", httpx.Client(transport=httpx.MockTransport(respond))
+    ).create("question")
+    assert [attempt.outcome for attempt in result.attempts] == [
+        "validation_failed", "http_error", "succeeded"
+    ]
+    assert delays == [0]

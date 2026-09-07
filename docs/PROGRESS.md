@@ -54,6 +54,10 @@
 
 ## 2026-09-07
 
+- Fix: accept OpenRouter structured content as either a JSON string or decoded object, require providers that support request parameters, cap Qwen reasoning at 1,000 tokens and total output at 2,500, and retry transient 429/502/503/504 responses with bounded `Retry-After` backoff.
+- Validation: all 27 tests pass, including decoded structured objects and a validation failure followed by a transient provider error and successful third attempt.
+- Current blocker: live OpenRouter behavior has not been exercised by this change; existing jobs and metadata are unchanged.
+- Next action: restart the worker and regenerate either reported fallback job to confirm a non-fallback plan and inspect its persisted planner-attempt diagnostics.
 - Fix: deduplicate questions that differ only by surrounding punctuation, including `?`, while preserving meaningful internal punctuation such as chemical notation; migrate existing version-3 keys with the oldest job remaining canonical.
 - Validation: all 25 tests pass, including concurrent punctuation-insensitive submission, preservation of `Na+`, and migration of punctuation-colliding legacy rows.
 - Current blocker: none.

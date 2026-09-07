@@ -14,6 +14,7 @@ Acceptance: 4–7 coherent scenes, 140–360 narration words, 1280×720 H.264/AA
 
 - Every kind's definition carries an anti-pattern clause (a pH/ion/rules scene is never `covalent_sharing`), plus a worked kind sequence and a final self-count instruction.
 - On retry, the planner returns the schema error to the model instead of resampling the same low-temperature plan; `PLANNER_TIMEOUT_SECONDS` defaults to 300 because shorter limits timed out live Qwen responses.
+- Accept structured content returned as either a JSON string or decoded object. Require a provider that supports the requested schema/reasoning parameters, cap reasoning/output tokens, and retry transient 429/502/503/504 responses without consuming the validation retry.
 
 ## Remaining verification
 
