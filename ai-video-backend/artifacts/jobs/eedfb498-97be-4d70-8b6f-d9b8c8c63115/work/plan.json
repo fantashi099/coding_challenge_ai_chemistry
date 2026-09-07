@@ -1,0 +1,35 @@
+{
+  "title": "How the pH Scale Works",
+  "scenes": [
+    {
+      "heading": "Measuring Hydrogen Ions",
+      "visual_text": "pH quantifies H\u207a concentration in aqueous solutions",
+      "narration": "How does the pH scale work? It quantifies the concentration of hydrogen ions, written H\u207a, in water-based solutions. A higher density of available hydrogen ions produces a more acidic environment and yields a lower numerical value.",
+      "visual_kind": "title"
+    },
+    {
+      "heading": "Reading the Scale",
+      "visual_text": "0\u20136 acidic | 7 neutral | 8\u201314 basic",
+      "narration": "The standard range spans zero to fourteen. Seven marks neutrality, matching pure water near room temperature. Values below seven indicate acidity. Values above seven indicate basicity, often termed alkalinity.",
+      "visual_kind": "ph_scale"
+    },
+    {
+      "heading": "The Logarithmic Step",
+      "visual_text": "Each unit change = tenfold shift in [H\u207a]",
+      "narration": "Because pH is logarithmic, adjacent numbers are not equal-sized intervals. A solution at pH three contains ten times the hydrogen ion concentration of pH four, and one hundred times that of pH five.",
+      "visual_kind": "bullets"
+    },
+    {
+      "heading": "Everyday Benchmarks",
+      "visual_text": "Lemon \u2248 2 \u00b7 Water \u2248 7 \u00b7 Soap \u2248 10",
+      "narration": "Lemon juice sits near two, pure water hovers around seven, and soapy water typically reaches ten. Exact readings shift with concentration and temperature, yet their relative positions consistently predict chemical behavior.",
+      "visual_kind": "ph_scale"
+    },
+    {
+      "heading": "Key Takeaways",
+      "visual_text": "Lower pH \u2192 more H\u207a \u00b7 7 \u2192 neutral \u00b7 Each step \u2192 \u00d710",
+      "narration": "Three rules govern the scale: lower pH means greater hydrogen ion density, seven denotes neutrality under standard conditions, and every single-unit shift multiplies concentration by ten. That exponential sensitivity explains why minor pH adjustments drive major chemical changes.",
+      "visual_kind": "recap"
+    }
+  ]
+}

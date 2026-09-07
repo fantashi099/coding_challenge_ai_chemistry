@@ -54,6 +54,10 @@
 
 ## 2026-09-07
 
+- Decision: replace the three curated-fallback sample artifacts with the newly accepted Qwen-generated jobs; continue publishing only each final MP4, plan, and metadata.
+- Validation: all 32 tests pass; all replacements report `fallback_used: false` with token usage and cost; `ffprobe` confirms 1280×720 H.264 video, AAC audio, and durations of 68.659–73.524 seconds.
+- Current blocker: none.
+- Next action: review the three GitHub-hosted sample links after push.
 - Finding: the three non-fallback Qwen plans paraphrased the opening question, dropped curated qualifications, introduced anthropomorphic or misleading chemistry language, and sometimes selected unrelated renderers solely to increase visual-kind diversity.
 - Decision: version the production prompt as Chemistry Planner v2, use the validated curated plan as a minimum factual baseline for each required question, set production temperature to 0.0, and reject any required-topic plan whose first narration sentence does not copy the question exactly.
 - Validation: all three required prompts passed live against `qwen/qwen3.7-flash` with `fallback_used: false`; each exact question opened its narration, baseline concepts and caveats were retained, and visual kinds matched scene content. All 32 automated tests and the render smoke test pass; `git diff --check` passes.

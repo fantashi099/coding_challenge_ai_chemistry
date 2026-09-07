@@ -1,0 +1,31 @@
+{
+  "question": "Why do atoms form covalent bonds?",
+  "model": "qwen/qwen3.7-flash",
+  "token_usage": {
+    "prompt_tokens": 1157,
+    "completion_tokens": 1523,
+    "total_tokens": 2680,
+    "cost": 0.0002327
+  },
+  "reported_llm_cost_usd": 0.0002327,
+  "fallback_used": false,
+  "planner_attempts": [
+    {
+      "attempt": 1,
+      "outcome": "succeeded",
+      "elapsed_seconds": 10.167,
+      "http_status": 200,
+      "detail": null,
+      "usage": {
+        "prompt_tokens": 1157,
+        "completion_tokens": 1523,
+        "total_tokens": 2680,
+        "cost": 0.0002327
+      },
+      "cost_usd": 0.0002327
+    }
+  ],
+  "duration_seconds": 68.498,
+  "elapsed_seconds": 28.21,
+  "fallback_source": "none"
+}

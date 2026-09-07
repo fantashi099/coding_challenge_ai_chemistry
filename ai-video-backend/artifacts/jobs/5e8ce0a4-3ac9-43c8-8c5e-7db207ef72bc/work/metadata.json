@@ -1,0 +1,40 @@
+{
+  "question": "What is the difference between ionic and covalent bonding?",
+  "model": "qwen/qwen3.7-flash",
+  "token_usage": {
+    "prompt_tokens": 1176,
+    "completion_tokens": 1551,
+    "total_tokens": 2727,
+    "cost": 0.00023691
+  },
+  "reported_llm_cost_usd": 0.00023691,
+  "fallback_used": false,
+  "planner_attempts": [
+    {
+      "attempt": 1,
+      "outcome": "http_error",
+      "elapsed_seconds": 0.962,
+      "http_status": 429,
+      "detail": "OpenRouter returned HTTP 429",
+      "usage": null,
+      "cost_usd": null
+    },
+    {
+      "attempt": 2,
+      "outcome": "succeeded",
+      "elapsed_seconds": 10.474,
+      "http_status": 200,
+      "detail": null,
+      "usage": {
+        "prompt_tokens": 1176,
+        "completion_tokens": 1551,
+        "total_tokens": 2727,
+        "cost": 0.00023691
+      },
+      "cost_usd": 0.00023691
+    }
+  ],
+  "duration_seconds": 72.6,
+  "elapsed_seconds": 33.82,
+  "fallback_source": "none"
+}

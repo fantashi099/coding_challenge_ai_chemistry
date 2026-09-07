@@ -1,0 +1,35 @@
+{
+  "title": "Ionic vs Covalent Bonding",
+  "scenes": [
+    {
+      "heading": "Fundamental Mechanisms",
+      "visual_text": "Ionic: charged ions attract | Covalent: shared pairs bind",
+      "narration": "What is the difference between ionic and covalent bonding? Both arise from electrical attractions that lower the combined system\u2019s energy, but they organize electrons differently. Ionic bonding relies on oppositely charged ions. Covalent bonding holds atoms together through shared electron pairs.",
+      "visual_kind": "title"
+    },
+    {
+      "heading": "Ionic Lattices",
+      "visual_text": "Na \u2192 Cl transfer | Na\u207a \u2194 Cl\u207b lattice",
+      "narration": "In a simplified ionic picture, sodium transfers an electron to chlorine. Sodium becomes positively charged and chlorine becomes negatively charged. Their opposite charges attract throughout a repeating crystal lattice, as in table salt.",
+      "visual_kind": "ionic_transfer"
+    },
+    {
+      "heading": "Covalent Sharing",
+      "visual_text": "H\u2013H electron density cloud | Attracted to both nuclei",
+      "narration": "In a covalent bond, atoms share electron density. In a hydrogen molecule, one shared pair is attracted to both nuclei. Covalent bonds commonly join nonmetal atoms into distinct molecules or network structures.",
+      "visual_kind": "covalent_sharing"
+    },
+    {
+      "heading": "Macroscopic Properties",
+      "visual_text": "Ionic: brittle, high-melting, conduct when mobile | Covalent: varied melting, usually insulating",
+      "narration": "Ionic compounds are often crystalline, brittle, and high-melting. They conduct electricity when melted or dissolved because ions can move. Molecular covalent substances often melt lower and usually do not conduct, though exceptions matter.",
+      "visual_kind": "bond_comparison"
+    },
+    {
+      "heading": "The Bonding Continuum",
+      "visual_text": "Lattice of ions \u2194 Shared electron density",
+      "narration": "Use the models as a continuum, not two perfect boxes. Many bonds have both ionic and covalent character. The practical distinction is whether we describe a lattice of ions or atoms sharing electron density.",
+      "visual_kind": "recap"
+    }
+  ]
+}

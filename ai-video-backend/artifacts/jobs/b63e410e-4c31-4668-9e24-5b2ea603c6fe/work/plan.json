@@ -2,32 +2,32 @@
   "title": "Why Atoms Form Covalent Bonds",
   "scenes": [
     {
-      "heading": "Atoms seek lower energy",
-      "visual_text": "Bonding can make a more stable arrangement",
-      "narration": "Atoms form bonds when the combined arrangement has lower energy than the separated atoms. For many nonmetals, sharing electrons lets each nucleus attract the same electrons and creates a stable covalent bond.",
+      "heading": "Energy and Stability",
+      "visual_text": "Bonding lowers total system energy",
+      "narration": "Why do atoms form covalent bonds? Atoms form bonds when the combined arrangement has lower energy than the separated atoms. For many nonmetals, sharing electrons lets each nucleus attract the same electrons and creates a stable covalent bond.",
       "visual_kind": "title"
     },
     {
-      "heading": "Valence electrons matter",
+      "heading": "Valence Electrons Matter",
       "visual_text": "Outer electrons control most bonding",
       "narration": "The electrons in an atom's outer shell are called valence electrons. These are the electrons most available for bonding. Filled outer shells are especially stable, so atoms often bond to approach that arrangement.",
       "visual_kind": "bullets"
     },
     {
-      "heading": "A shared pair",
+      "heading": "A Shared Pair",
       "visual_text": "H \u00b7  +  \u00b7 H  \u2192  H : H",
       "narration": "Consider two hydrogen atoms. Each contributes one electron to a shared pair. Both nuclei attract that pair, so each hydrogen effectively gains access to two electrons, filling its first shell.",
       "visual_kind": "covalent_sharing"
     },
     {
-      "heading": "More pairs, stronger links",
-      "visual_text": "Single: 1 pair\nDouble: 2 pairs\nTriple: 3 pairs",
+      "heading": "Multiple Pairs",
+      "visual_text": "Single: 1 pair | Double: 2 pairs | Triple: 3 pairs",
       "narration": "Atoms can share one, two, or three electron pairs, producing single, double, or triple bonds. The best arrangement depends on the atoms and geometry, not simply on completing an octet rule.",
       "visual_kind": "covalent_sharing"
     },
     {
-      "heading": "The key idea",
-      "visual_text": "Shared electrons attract both nuclei\nThe molecule reaches lower energy",
+      "heading": "The Key Idea",
+      "visual_text": "Shared electrons attract both nuclei | Molecule reaches lower energy",
       "narration": "Covalent bonding is therefore not atoms consciously seeking shells. It is an electrostatic, lower-energy arrangement in which shared electrons hold nuclei together. The shell model is a useful prediction tool, while energy explains why bonding occurs.",
       "visual_kind": "recap"
     }

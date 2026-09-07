@@ -1,0 +1,31 @@
+{
+  "question": "How does the pH scale work?",
+  "model": "qwen/qwen3.7-flash",
+  "token_usage": {
+    "prompt_tokens": 1165,
+    "completion_tokens": 1521,
+    "total_tokens": 2686,
+    "cost": 0.00023268
+  },
+  "reported_llm_cost_usd": 0.00023268,
+  "fallback_used": false,
+  "planner_attempts": [
+    {
+      "attempt": 1,
+      "outcome": "succeeded",
+      "elapsed_seconds": 12.388,
+      "http_status": 200,
+      "detail": null,
+      "usage": {
+        "prompt_tokens": 1165,
+        "completion_tokens": 1521,
+        "total_tokens": 2686,
+        "cost": 0.00023268
+      },
+      "cost_usd": 0.00023268
+    }
+  ],
+  "duration_seconds": 73.383,
+  "elapsed_seconds": 34.698,
+  "fallback_source": "none"
+}
